@@ -1,0 +1,64 @@
+import Image from "next/image";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { AddToCartButton } from "@/components/AddToCartButton";
+import { createClient } from "@/lib/supabase/server";
+import { formatPrice } from "@/lib/utils";
+
+export default async function ProductDetailPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}) {
+  const { slug } = await params;
+  const supabase = await createClient();
+
+  const { data: product } = await supabase
+    .from("products")
+    .select("*, categories(*)")
+    .eq("slug", slug)
+    .eq("active", true)
+    .maybeSingle();
+
+  if (!product) notFound();
+
+  return (
+    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+      <Link href="/productos" className="text-sm font-medium text-emerald-600 hover:underline">
+        ← Volver al catálogo
+      </Link>
+
+      <div className="mt-8 grid gap-10 lg:grid-cols-2">
+        <div className="relative aspect-square overflow-hidden rounded-3xl bg-zinc-100">
+          {product.image_url && (
+            <Image
+              src={product.image_url}
+              alt={product.name}
+              fill
+              className="object-cover"
+              sizes="(max-width: 1024px) 100vw, 50vw"
+              priority
+            />
+          )}
+        </div>
+
+        <div className="space-y-6">
+          {product.categories && (
+            <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+              {product.categories.name}
+            </span>
+          )}
+          <h1 className="text-4xl font-bold tracking-tight">{product.name}</h1>
+          <p className="text-3xl font-bold text-emerald-600">{formatPrice(product.price)}</p>
+          <p className="text-lg leading-relaxed text-zinc-600">{product.description}</p>
+          <p className="text-sm text-zinc-500">
+            {product.stock > 0
+              ? `${product.stock} unidades disponibles`
+              : "Producto sin stock"}
+          </p>
+          <AddToCartButton productId={product.id} disabled={product.stock <= 0} />
+        </div>
+      </div>
+    </div>
+  );
+}
