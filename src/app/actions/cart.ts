@@ -1,40 +1,46 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/session";
-
-const SESSION_COOKIE = "tienda_session";
-
-async function getSessionId() {
-  const cookieStore = await cookies();
-  let sessionId = cookieStore.get(SESSION_COOKIE)?.value;
-
-  if (!sessionId) {
-    sessionId = crypto.randomUUID();
-    cookieStore.set(SESSION_COOKIE, sessionId, {
-      httpOnly: true,
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30,
-      path: "/",
-    });
-  }
-
-  return sessionId;
-}
+import {
+  getOrCreateSessionId,
+  MAX_CART_QUANTITY,
+} from "@/lib/cart/session";
 
 async function getCartClient() {
   const user = await getCurrentUser();
   if (user) {
-    return { supabase: await createClient(), userId: user.id, sessionId: await getSessionId() };
+    return { supabase: await createClient(), userId: user.id, sessionId: await getOrCreateSessionId() };
   }
-  return { supabase: createAdminClient(), userId: null, sessionId: await getSessionId() };
+  return { supabase: createAdminClient(), userId: null, sessionId: await getOrCreateSessionId() };
+}
+
+async function validateProductForCart(supabase: ReturnType<typeof createAdminClient>, productId: string) {
+  const { data: product } = await supabase
+    .from("products")
+    .select("id, is_active, stock, track_stock")
+    .eq("id", productId)
+    .maybeSingle();
+
+  if (!product || !product.is_active) {
+    throw new Error("Producto no disponible.");
+  }
+
+  if (product.track_stock && product.stock <= 0) {
+    throw new Error("Producto sin stock.");
+  }
+
+  return product;
 }
 
 export async function addToCart(productId: string) {
   const { supabase, userId, sessionId } = await getCartClient();
+  const product = await validateProductForCart(
+    userId ? createAdminClient() : supabase,
+    productId
+  );
 
   const { data: existing } = await (userId
     ? supabase
@@ -50,11 +56,17 @@ export async function addToCart(productId: string) {
         .eq("product_id", productId)
   ).maybeSingle<{ id: string; quantity: number }>();
 
+  const nextQuantity = Math.min(
+    (existing?.quantity ?? 0) + 1,
+    product.track_stock ? Math.min(product.stock, MAX_CART_QUANTITY) : MAX_CART_QUANTITY
+  );
+
+  if (existing && nextQuantity === existing.quantity) {
+    return;
+  }
+
   if (existing) {
-    await supabase
-      .from("cart_items")
-      .update({ quantity: existing.quantity + 1 })
-      .eq("id", existing.id);
+    await supabase.from("cart_items").update({ quantity: nextQuantity }).eq("id", existing.id);
   } else {
     await supabase.from("cart_items").insert({
       session_id: sessionId,
@@ -71,20 +83,20 @@ export async function addToCart(productId: string) {
 export async function updateCartItemQuantity(itemId: string, quantity: number) {
   const { supabase, userId, sessionId } = await getCartClient();
 
-  const query = supabase.from("cart_items").delete().eq("id", itemId);
+  const boundedQuantity = Math.min(Math.max(quantity, 0), MAX_CART_QUANTITY);
 
-  if (userId) {
-    query.eq("user_id", userId);
-  } else {
-    query.eq("session_id", sessionId).is("user_id", null);
-  }
-
-  if (quantity <= 0) {
-    await query;
+  if (boundedQuantity <= 0) {
+    const deleteQuery = supabase.from("cart_items").delete().eq("id", itemId);
+    if (userId) {
+      deleteQuery.eq("user_id", userId);
+    } else {
+      deleteQuery.eq("session_id", sessionId).is("user_id", null);
+    }
+    await deleteQuery;
   } else {
     const updateQuery = supabase
       .from("cart_items")
-      .update({ quantity })
+      .update({ quantity: boundedQuantity })
       .eq("id", itemId);
 
     if (userId) {

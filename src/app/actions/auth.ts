@@ -5,8 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
-
-const SESSION_COOKIE = "tienda_session";
+import { SESSION_COOKIE, getSiteUrl } from "@/lib/cart/session";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
@@ -29,7 +28,7 @@ export async function signUp(formData: FormData) {
     password,
     options: {
       data: { first_name: firstName, last_name: lastName },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/login`,
+      emailRedirectTo: `${getSiteUrl()}/login`,
     },
   });
 
@@ -57,6 +56,17 @@ export async function signIn(formData: FormData) {
   }
 
   if (data.user) {
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("status")
+      .eq("id", data.user.id)
+      .maybeSingle();
+
+    if (profile?.status === "suspended") {
+      await supabase.auth.signOut();
+      return { error: "Tu cuenta está suspendida. Contactá al soporte." };
+    }
+
     await mergeAnonymousCart(data.user.id);
   }
 
@@ -80,7 +90,7 @@ export async function requestPasswordReset(formData: FormData) {
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000"}/actualizar-password`,
+    redirectTo: `${getSiteUrl()}/actualizar-password`,
   });
 
   if (error) {
@@ -113,36 +123,10 @@ async function mergeAnonymousCart(userId: string) {
   if (!sessionId) return;
 
   const admin = createAdminClient();
-
-  const { data: anonItems } = await admin
-    .from("cart_items")
-    .select("*")
-    .eq("session_id", sessionId)
-    .is("user_id", null);
-
-  if (!anonItems?.length) return;
-
-  for (const item of anonItems) {
-    const { data: existing } = await admin
-      .from("cart_items")
-      .select("id, quantity")
-      .eq("user_id", userId)
-      .eq("product_id", item.product_id)
-      .maybeSingle();
-
-    if (existing) {
-      await admin
-        .from("cart_items")
-        .update({ quantity: existing.quantity + item.quantity })
-        .eq("id", existing.id);
-      await admin.from("cart_items").delete().eq("id", item.id);
-    } else {
-      await admin
-        .from("cart_items")
-        .update({ user_id: userId, session_id: sessionId })
-        .eq("id", item.id);
-    }
-  }
+  await admin.rpc("merge_anonymous_cart", {
+    p_session_id: sessionId,
+    p_user_id: userId,
+  });
 }
 
 function translateAuthError(message: string) {

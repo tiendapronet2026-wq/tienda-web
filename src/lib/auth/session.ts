@@ -42,6 +42,14 @@ export async function getCurrentProfile() {
 export async function requireAuth(redirectTo = "/login") {
   const user = await getCurrentUser();
   if (!user) redirect(redirectTo);
+
+  const profile = await getCurrentProfile();
+  if (profile?.status === "suspended") {
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+    redirect("/login?error=suspendido");
+  }
+
   return user;
 }
 
