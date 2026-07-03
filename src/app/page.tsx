@@ -9,10 +9,10 @@ export default async function HomePage() {
     supabase
       .from("products")
       .select("*")
-      .eq("active", true)
+      .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(6),
-    supabase.from("categories").select("*").order("name"),
+    supabase.from("categories").select("*").eq("is_active", true).order("sort_order").order("name"),
   ]);
 
   return (

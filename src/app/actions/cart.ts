@@ -3,6 +3,8 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { getCurrentUser } from "@/lib/auth/session";
 
 const SESSION_COOKIE = "tienda_session";
 
@@ -23,16 +25,30 @@ async function getSessionId() {
   return sessionId;
 }
 
-export async function addToCart(productId: string) {
-  const supabase = await createClient();
-  const sessionId = await getSessionId();
+async function getCartClient() {
+  const user = await getCurrentUser();
+  if (user) {
+    return { supabase: await createClient(), userId: user.id, sessionId: await getSessionId() };
+  }
+  return { supabase: createAdminClient(), userId: null, sessionId: await getSessionId() };
+}
 
-  const { data: existing } = await supabase
-    .from("cart_items")
-    .select("id, quantity")
-    .eq("session_id", sessionId)
-    .eq("product_id", productId)
-    .maybeSingle<{ id: string; quantity: number }>();
+export async function addToCart(productId: string) {
+  const { supabase, userId, sessionId } = await getCartClient();
+
+  const { data: existing } = await (userId
+    ? supabase
+        .from("cart_items")
+        .select("id, quantity")
+        .eq("user_id", userId)
+        .eq("product_id", productId)
+    : supabase
+        .from("cart_items")
+        .select("id, quantity")
+        .eq("session_id", sessionId)
+        .is("user_id", null)
+        .eq("product_id", productId)
+  ).maybeSingle<{ id: string; quantity: number }>();
 
   if (existing) {
     await supabase
@@ -44,6 +60,7 @@ export async function addToCart(productId: string) {
       session_id: sessionId,
       product_id: productId,
       quantity: 1,
+      user_id: userId,
     });
   }
 
@@ -52,21 +69,31 @@ export async function addToCart(productId: string) {
 }
 
 export async function updateCartItemQuantity(itemId: string, quantity: number) {
-  const supabase = await createClient();
-  const sessionId = await getSessionId();
+  const { supabase, userId, sessionId } = await getCartClient();
+
+  const query = supabase.from("cart_items").delete().eq("id", itemId);
+
+  if (userId) {
+    query.eq("user_id", userId);
+  } else {
+    query.eq("session_id", sessionId).is("user_id", null);
+  }
 
   if (quantity <= 0) {
-    await supabase
-      .from("cart_items")
-      .delete()
-      .eq("id", itemId)
-      .eq("session_id", sessionId);
+    await query;
   } else {
-    await supabase
+    const updateQuery = supabase
       .from("cart_items")
       .update({ quantity })
-      .eq("id", itemId)
-      .eq("session_id", sessionId);
+      .eq("id", itemId);
+
+    if (userId) {
+      updateQuery.eq("user_id", userId);
+    } else {
+      updateQuery.eq("session_id", sessionId).is("user_id", null);
+    }
+
+    await updateQuery;
   }
 
   revalidatePath("/carrito");
@@ -74,32 +101,34 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
 }
 
 export async function getCartCount() {
-  const supabase = await createClient();
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
+  const { supabase, userId, sessionId } = await getCartClient();
 
-  if (!sessionId) return 0;
+  let query = supabase.from("cart_items").select("quantity");
 
-  const { data } = await supabase
-    .from("cart_items")
-    .select("quantity")
-    .eq("session_id", sessionId);
+  if (userId) {
+    query = query.eq("user_id", userId);
+  } else {
+    query = query.eq("session_id", sessionId).is("user_id", null);
+  }
 
+  const { data } = await query;
   return data?.reduce((sum, item) => sum + item.quantity, 0) ?? 0;
 }
 
 export async function getCartItems() {
-  const supabase = await createClient();
-  const cookieStore = await cookies();
-  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
+  const { supabase, userId, sessionId } = await getCartClient();
 
-  if (!sessionId) return [];
-
-  const { data } = await supabase
+  let query = supabase
     .from("cart_items")
     .select("*, products(*)")
-    .eq("session_id", sessionId)
     .order("created_at", { ascending: false });
 
+  if (userId) {
+    query = query.eq("user_id", userId);
+  } else {
+    query = query.eq("session_id", sessionId).is("user_id", null);
+  }
+
+  const { data } = await query;
   return data ?? [];
 }

@@ -30,7 +30,11 @@ export function ProductCard({ product }: { product: Product }) {
               {formatPrice(product.price)}
             </span>
             <span className="text-xs text-zinc-400">
-              {product.stock > 0 ? `${product.stock} en stock` : "Sin stock"}
+              {!product.track_stock || product.stock > 0
+                ? product.track_stock
+                  ? `${product.stock} en stock`
+                  : "Disponible"
+                : "Sin stock"}
             </span>
           </div>
         </div>

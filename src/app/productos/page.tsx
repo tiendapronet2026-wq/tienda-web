@@ -13,12 +13,14 @@ export default async function ProductsPage({
   const { data: categories } = await supabase
     .from("categories")
     .select("*")
+    .eq("is_active", true)
+    .order("sort_order")
     .order("name");
 
   let query = supabase
     .from("products")
     .select("*, categories(*)")
-    .eq("active", true)
+    .eq("is_active", true)
     .order("name");
 
   if (categoria) {

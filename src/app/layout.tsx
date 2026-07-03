@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Header } from "@/components/Header";
+import { headers } from "next/headers";
+import { HeaderNav } from "@/components/Header";
 import { getCartCount } from "@/app/actions/cart";
 import "./globals.css";
 
@@ -24,17 +25,21 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const cartCount = await getCartCount();
+  const pathname = (await headers()).get("x-pathname") ?? "";
+  const isAdminRoute = pathname.startsWith("/admin");
+  const cartCount = isAdminRoute ? 0 : await getCartCount();
 
   return (
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <div className="min-h-screen bg-zinc-50 text-zinc-900">
-          <Header cartCount={cartCount} />
+          {!isAdminRoute && <HeaderNav cartCount={cartCount} />}
           <main>{children}</main>
-          <footer className="border-t border-zinc-200 bg-white py-8 text-center text-sm text-zinc-500">
-            © {new Date().getFullYear()} TiendaPro. Todos los derechos reservados.
-          </footer>
+          {!isAdminRoute && (
+            <footer className="border-t border-zinc-200 bg-white py-8 text-center text-sm text-zinc-500">
+              © {new Date().getFullYear()} TiendaPro. Todos los derechos reservados.
+            </footer>
+          )}
         </div>
       </body>
     </html>

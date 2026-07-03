@@ -17,7 +17,7 @@ export default async function ProductDetailPage({
     .from("products")
     .select("*, categories(*)")
     .eq("slug", slug)
-    .eq("active", true)
+    .eq("is_active", true)
     .maybeSingle();
 
   if (!product) notFound();
@@ -52,11 +52,16 @@ export default async function ProductDetailPage({
           <p className="text-3xl font-bold text-emerald-600">{formatPrice(product.price)}</p>
           <p className="text-lg leading-relaxed text-zinc-600">{product.description}</p>
           <p className="text-sm text-zinc-500">
-            {product.stock > 0
-              ? `${product.stock} unidades disponibles`
-              : "Producto sin stock"}
+            {product.track_stock
+              ? product.stock > 0
+                ? `${product.stock} unidades disponibles`
+                : "Producto sin stock"
+              : "Disponible"}
           </p>
-          <AddToCartButton productId={product.id} disabled={product.stock <= 0} />
+          <AddToCartButton
+            productId={product.id}
+            disabled={product.track_stock && product.stock <= 0}
+          />
         </div>
       </div>
     </div>
