@@ -3,20 +3,33 @@ import { cookies } from "next/headers";
 export const SESSION_COOKIE = "tienda_session";
 export const MAX_CART_QUANTITY = 99;
 
-export async function getOrCreateSessionId() {
+export async function getExistingSessionId() {
   const cookieStore = await cookies();
-  let sessionId = cookieStore.get(SESSION_COOKIE)?.value;
+  const sessionId = cookieStore.get(SESSION_COOKIE)?.value;
 
   if (!sessionId || !isValidSessionId(sessionId)) {
-    sessionId = crypto.randomUUID();
-    cookieStore.set(SESSION_COOKIE, sessionId, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 60 * 60 * 24 * 30,
-      path: "/",
-    });
+    return null;
   }
+
+  return sessionId;
+}
+
+export async function getOrCreateSessionId() {
+  const cookieStore = await cookies();
+  const existing = await getExistingSessionId();
+
+  if (existing) {
+    return existing;
+  }
+
+  const sessionId = crypto.randomUUID();
+  cookieStore.set(SESSION_COOKIE, sessionId, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 30,
+    path: "/",
+  });
 
   return sessionId;
 }

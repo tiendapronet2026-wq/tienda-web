@@ -5,16 +5,33 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { getCurrentUser } from "@/lib/auth/session";
 import {
+  getExistingSessionId,
   getOrCreateSessionId,
   MAX_CART_QUANTITY,
 } from "@/lib/cart/session";
 
-async function getCartClient() {
+async function getCartClientReadOnly() {
   const user = await getCurrentUser();
   if (user) {
-    return { supabase: await createClient(), userId: user.id, sessionId: await getOrCreateSessionId() };
+    return { supabase: await createClient(), userId: user.id, sessionId: null as string | null };
   }
-  return { supabase: createAdminClient(), userId: null, sessionId: await getOrCreateSessionId() };
+  return {
+    supabase: createAdminClient(),
+    userId: null,
+    sessionId: await getExistingSessionId(),
+  };
+}
+
+async function getCartClientForMutation() {
+  const user = await getCurrentUser();
+  if (user) {
+    return { supabase: await createClient(), userId: user.id, sessionId: null as string | null };
+  }
+  return {
+    supabase: createAdminClient(),
+    userId: null,
+    sessionId: await getOrCreateSessionId(),
+  };
 }
 
 async function validateProductForCart(supabase: ReturnType<typeof createAdminClient>, productId: string) {
@@ -36,7 +53,7 @@ async function validateProductForCart(supabase: ReturnType<typeof createAdminCli
 }
 
 export async function addToCart(productId: string) {
-  const { supabase, userId, sessionId } = await getCartClient();
+  const { supabase, userId, sessionId } = await getCartClientForMutation();
   const product = await validateProductForCart(
     userId ? createAdminClient() : supabase,
     productId
@@ -81,7 +98,11 @@ export async function addToCart(productId: string) {
 }
 
 export async function updateCartItemQuantity(itemId: string, quantity: number) {
-  const { supabase, userId, sessionId } = await getCartClient();
+  const { supabase, userId, sessionId } = await getCartClientReadOnly();
+
+  if (!userId && !sessionId) {
+    return;
+  }
 
   const boundedQuantity = Math.min(Math.max(quantity, 0), MAX_CART_QUANTITY);
 
@@ -113,7 +134,11 @@ export async function updateCartItemQuantity(itemId: string, quantity: number) {
 }
 
 export async function getCartCount() {
-  const { supabase, userId, sessionId } = await getCartClient();
+  const { supabase, userId, sessionId } = await getCartClientReadOnly();
+
+  if (!userId && !sessionId) {
+    return 0;
+  }
 
   let query = supabase.from("cart_items").select("quantity");
 
@@ -128,7 +153,11 @@ export async function getCartCount() {
 }
 
 export async function getCartItems() {
-  const { supabase, userId, sessionId } = await getCartClient();
+  const { supabase, userId, sessionId } = await getCartClientReadOnly();
+
+  if (!userId && !sessionId) {
+    return [];
+  }
 
   let query = supabase
     .from("cart_items")
