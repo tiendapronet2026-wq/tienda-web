@@ -33,6 +33,12 @@ export default async function RootLayout({
     <html lang="es">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <div className="min-h-screen bg-zinc-50 text-zinc-900">
+          {!isAdminRoute && (
+            <div className="border-b border-amber-200 bg-amber-50 px-4 py-2 text-center text-xs text-amber-900 sm:text-sm">
+              Sitio en etapa beta. Las compras online estarán disponibles
+              próximamente.
+            </div>
+          )}
           {!isAdminRoute && <HeaderNav cartCount={cartCount} />}
           <main>{children}</main>
           {!isAdminRoute && (

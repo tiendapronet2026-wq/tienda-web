@@ -63,7 +63,10 @@ export default async function CartPage() {
 
           <button
             type="button"
-            className="w-full rounded-xl bg-emerald-600 px-6 py-4 text-sm font-semibold text-white transition hover:bg-emerald-500"
+            disabled
+            aria-disabled="true"
+            title="Las compras online estarán disponibles próximamente"
+            className="w-full cursor-not-allowed rounded-xl bg-zinc-300 px-6 py-4 text-sm font-semibold text-zinc-600"
           >
             Finalizar compra (próximamente)
           </button>
