@@ -35,19 +35,17 @@ export default async function ProductsPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Catálogo</h1>
-        <p className="mt-2 text-zinc-500">
-          Explorá todos nuestros productos disponibles.
-        </p>
+        <h1 className="text-3xl font-bold text-foreground">Catálogo</h1>
+        <p className="mt-2 text-text-secondary">Explorá todos nuestros productos disponibles.</p>
       </div>
 
       <div className="mb-8 flex flex-wrap gap-3">
         <Link
           href="/productos"
-          className={`rounded-full px-5 py-2 text-sm font-medium transition ${
+          className={`rounded-xl px-5 py-2 text-sm font-medium transition ${
             !categoria
-              ? "bg-zinc-900 text-white"
-              : "border border-zinc-200 bg-white text-zinc-700 hover:border-emerald-500"
+              ? "bg-hero text-white"
+              : "border border-border bg-surface text-text-secondary hover:border-brand hover:text-brand"
           }`}
         >
           Todos
@@ -56,10 +54,10 @@ export default async function ProductsPage({
           <Link
             key={category.id}
             href={`/productos?categoria=${category.slug}`}
-            className={`rounded-full px-5 py-2 text-sm font-medium transition ${
+            className={`rounded-xl px-5 py-2 text-sm font-medium transition ${
               categoria === category.slug
-                ? "bg-zinc-900 text-white"
-                : "border border-zinc-200 bg-white text-zinc-700 hover:border-emerald-500"
+                ? "bg-hero text-white"
+                : "border border-border bg-surface text-text-secondary hover:border-brand hover:text-brand"
             }`}
           >
             {category.name}
@@ -74,7 +72,7 @@ export default async function ProductsPage({
       </div>
 
       {!products?.length && (
-        <p className="rounded-2xl border border-dashed border-zinc-300 p-10 text-center text-zinc-500">
+        <p className="rounded-2xl border border-dashed border-border bg-surface p-10 text-center text-muted">
           No hay productos en esta categoría.
         </p>
       )}

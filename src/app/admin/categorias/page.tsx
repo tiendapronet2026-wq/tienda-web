@@ -25,44 +25,44 @@ export default async function AdminCategoriesPage({
       </div>
 
       {mensaje === "creado" && (
-        <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <p className="mt-4 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand">
           Categoría creada correctamente.
         </p>
       )}
 
-      <form action={createCategory} className="mt-8 rounded-2xl border border-zinc-200 bg-white p-6">
+      <form action={createCategory} className="mt-8 rounded-2xl border border-border bg-surface p-6">
         <h2 className="text-lg font-semibold">Nueva categoría</h2>
         <div className="mt-4 grid gap-4 sm:grid-cols-3">
           <input
             name="name"
             required
             placeholder="Nombre"
-            className="rounded-xl border border-zinc-200 px-4 py-3 text-sm"
+            className="rounded-xl border border-border px-4 py-3 text-sm"
           />
           <input
             name="description"
             placeholder="Descripción"
-            className="rounded-xl border border-zinc-200 px-4 py-3 text-sm"
+            className="rounded-xl border border-border px-4 py-3 text-sm"
           />
           <input
             name="sort_order"
             type="number"
             defaultValue={0}
             placeholder="Orden"
-            className="rounded-xl border border-zinc-200 px-4 py-3 text-sm"
+            className="rounded-xl border border-border px-4 py-3 text-sm"
           />
         </div>
         <button
           type="submit"
-          className="mt-4 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+          className="mt-4 rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white"
         >
           Crear categoría
         </button>
       </form>
 
-      <div className="mt-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+      <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-surface">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-100 bg-zinc-50">
+          <thead className="border-b border-border bg-surface-muted">
             <tr>
               <th className="px-4 py-3">Nombre</th>
               <th className="px-4 py-3">Slug</th>
@@ -72,9 +72,9 @@ export default async function AdminCategoriesPage({
           </thead>
           <tbody>
             {categories?.map((category) => (
-              <tr key={category.id} className="border-b border-zinc-50">
+              <tr key={category.id} className="border-b border-border">
                 <td className="px-4 py-3 font-medium">{category.name}</td>
-                <td className="px-4 py-3 text-zinc-500">{category.slug}</td>
+                <td className="px-4 py-3 text-muted">{category.slug}</td>
                 <td className="px-4 py-3">
                   {(category.products as { count: number }[])?.[0]?.count ?? 0}
                 </td>
@@ -86,7 +86,7 @@ export default async function AdminCategoriesPage({
           </tbody>
         </table>
         {!categories?.length && (
-          <p className="p-8 text-center text-zinc-500">No hay categorías.</p>
+          <p className="p-8 text-center text-muted">No hay categorías.</p>
         )}
       </div>
     </div>

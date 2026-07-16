@@ -23,7 +23,7 @@ export function UserMenu({
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-xs font-bold text-white"
+        className="flex h-9 w-9 items-center justify-center rounded-full bg-brand text-xs font-bold text-white"
         aria-label="Menú de usuario"
       >
         {getInitials(profile, email)}
@@ -31,8 +31,8 @@ export function UserMenu({
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-zinc-200 bg-white py-2 shadow-lg">
-            <p className="border-b border-zinc-100 px-4 py-2 text-sm font-medium text-zinc-900">
+          <div className="absolute right-0 z-50 mt-2 w-56 rounded-xl border border-border bg-surface py-2 shadow-lg">
+            <p className="border-b border-border px-4 py-2 text-sm font-medium text-foreground">
               {getDisplayName(profile, email)}
             </p>
             <MenuLink href="/mi-cuenta" onClick={() => setOpen(false)}>
@@ -50,7 +50,7 @@ export function UserMenu({
               type="button"
               disabled={pending}
               onClick={() => startTransition(() => signOut())}
-              className="block w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 disabled:opacity-60"
+              className="block w-full px-4 py-2 text-left text-sm text-error hover:bg-error-soft disabled:opacity-60"
             >
               {pending ? "Cerrando..." : "Cerrar sesión"}
             </button>
@@ -74,7 +74,7 @@ function MenuLink({
     <Link
       href={href}
       onClick={onClick}
-      className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50"
+      className="block px-4 py-2 text-sm text-text-secondary hover:bg-surface-muted"
     >
       {children}
     </Link>

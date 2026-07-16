@@ -1,12 +1,68 @@
 @import "tailwindcss";
 
 :root {
-  --background: #fafafa;
-  --foreground: #18181b;
+  /* Marca — verde “PRO” oscurecido para contraste AA con texto blanco */
+  --brand-primary: #0a8f5c;
+  --brand-primary-hover: #087a4e;
+  --brand-primary-soft: #e6f7ef;
+  /* Azul tecnológico del isotipo */
+  --brand-secondary: #0860e8;
+  --brand-secondary-hover: #0650c7;
+  /* Cian del gradiente (acentos / highlights) */
+  --brand-accent: #00b4d8;
+  --brand-accent-soft: #e0f7fc;
+
+  --background: #f3f6fa;
+  --foreground: #0f172a;
+  --surface: #ffffff;
+  --surface-muted: #e8eef5;
+  --border: #d0d9e6;
+  --muted: #64748b;
+  --text-secondary: #475569;
+
+  --success: #059669;
+  --success-soft: #ecfdf5;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --error: #dc2626;
+  --error-soft: #fef2f2;
+
+  --ring: #0860e8;
+  --hero: #0b1220;
+}
+
+@theme inline {
+  --color-brand: var(--brand-primary);
+  --color-brand-hover: var(--brand-primary-hover);
+  --color-brand-soft: var(--brand-primary-soft);
+  --color-brand-secondary: var(--brand-secondary);
+  --color-brand-secondary-hover: var(--brand-secondary-hover);
+  --color-brand-accent: var(--brand-accent);
+  --color-brand-accent-soft: var(--brand-accent-soft);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-border: var(--border);
+  --color-muted: var(--muted);
+  --color-text-secondary: var(--text-secondary);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-error: var(--error);
+  --color-error-soft: var(--error-soft);
+  --color-hero: var(--hero);
+  --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  font-family: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+}
+
+*:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }

@@ -24,12 +24,12 @@ export default async function LoginPage({
       }
     >
       {mensaje === "registro-exitoso" && (
-        <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
+        <p className="rounded-lg bg-brand-soft px-3 py-2 text-sm text-brand">
           Registro exitoso. Revisá tu email si se requiere confirmación e iniciá sesión.
         </p>
       )}
       {error === "suspendido" && (
-        <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p className="rounded-lg bg-error-soft px-3 py-2 text-sm text-error">
           Tu cuenta está suspendida. Contactá al soporte.
         </p>
       )}

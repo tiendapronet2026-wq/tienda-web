@@ -35,7 +35,7 @@ export default async function AdminProductsPage({
         <h1 className="text-3xl font-bold">Productos</h1>
         <Link
           href="/admin/productos/nuevo"
-          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white"
+          className="rounded-xl bg-brand px-4 py-2 text-sm font-semibold text-white"
         >
           Nuevo producto
         </Link>
@@ -46,9 +46,9 @@ export default async function AdminProductsPage({
           name="q"
           defaultValue={q}
           placeholder="Buscar..."
-          className="rounded-xl border border-zinc-200 px-4 py-2 text-sm"
+          className="rounded-xl border border-border px-4 py-2 text-sm"
         />
-        <select name="categoria" defaultValue={categoria} className="rounded-xl border border-zinc-200 px-4 py-2 text-sm">
+        <select name="categoria" defaultValue={categoria} className="rounded-xl border border-border px-4 py-2 text-sm">
           <option value="">Todas las categorías</option>
           {categories?.map((c) => (
             <option key={c.id} value={c.slug}>
@@ -56,21 +56,21 @@ export default async function AdminProductsPage({
             </option>
           ))}
         </select>
-        <select name="estado" defaultValue={estado} className="rounded-xl border border-zinc-200 px-4 py-2 text-sm">
+        <select name="estado" defaultValue={estado} className="rounded-xl border border-border px-4 py-2 text-sm">
           <option value="">Todos</option>
           <option value="activo">Activos</option>
           <option value="inactivo">Inactivos</option>
           <option value="destacado">Destacados</option>
           <option value="stock-bajo">Stock bajo</option>
         </select>
-        <button type="submit" className="rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white">
+        <button type="submit" className="rounded-xl bg-hero px-4 py-2 text-sm font-semibold text-white">
           Filtrar
         </button>
       </form>
 
-      <div className="mt-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+      <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-surface">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-100 bg-zinc-50">
+          <thead className="border-b border-border bg-surface-muted">
             <tr>
               <th className="px-4 py-3">Producto</th>
               <th className="px-4 py-3">SKU</th>
@@ -81,22 +81,22 @@ export default async function AdminProductsPage({
           </thead>
           <tbody>
             {products?.map((product) => (
-              <tr key={product.id} className="border-b border-zinc-50">
+              <tr key={product.id} className="border-b border-border">
                 <td className="px-4 py-3">
                   <Link href={`/admin/productos/${product.id}`} className="flex items-center gap-3">
-                    <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-zinc-100">
+                    <div className="relative h-10 w-10 overflow-hidden rounded-lg bg-surface-muted">
                       {product.image_url && (
                         <Image src={product.image_url} alt="" fill className="object-cover" sizes="40px" />
                       )}
                     </div>
-                    <span className="font-medium hover:text-emerald-600">{product.name}</span>
+                    <span className="font-medium hover:text-brand">{product.name}</span>
                   </Link>
                 </td>
-                <td className="px-4 py-3 text-zinc-500">{product.sku ?? "—"}</td>
+                <td className="px-4 py-3 text-muted">{product.sku ?? "—"}</td>
                 <td className="px-4 py-3">{formatPrice(product.price)}</td>
                 <td className="px-4 py-3">
                   {product.track_stock ? (
-                    <span className={product.stock <= product.low_stock_threshold ? "text-red-600" : ""}>
+                    <span className={product.stock <= product.low_stock_threshold ? "text-error" : ""}>
                       {product.stock}
                     </span>
                   ) : (
@@ -106,7 +106,7 @@ export default async function AdminProductsPage({
                 <td className="px-4 py-3">
                   <span
                     className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                      product.is_active ? "bg-emerald-50 text-emerald-700" : "bg-zinc-100 text-zinc-600"
+                      product.is_active ? "bg-brand-soft text-brand" : "bg-surface-muted text-text-secondary"
                     }`}
                   >
                     {product.is_active ? "Activo" : "Inactivo"}
@@ -117,7 +117,7 @@ export default async function AdminProductsPage({
           </tbody>
         </table>
         {!products?.length && (
-          <p className="p-8 text-center text-zinc-500">No hay productos que coincidan.</p>
+          <p className="p-8 text-center text-muted">No hay productos que coincidan.</p>
         )}
       </div>
     </div>

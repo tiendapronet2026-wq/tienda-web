@@ -15,10 +15,10 @@ export default async function MyAccountPage({
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6">
       <h1 className="text-3xl font-bold">Mi cuenta</h1>
-      <p className="mt-2 text-zinc-500">Gestioná tus datos personales y tu sesión.</p>
+      <p className="mt-2 text-muted">Gestioná tus datos personales y tu sesión.</p>
 
       {mensaje === "password-actualizado" && (
-        <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <p className="mt-4 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand">
           Contraseña actualizada correctamente.
         </p>
       )}
@@ -41,12 +41,12 @@ export default async function MyAccountPage({
         />
       </div>
 
-      <section className="mt-8 rounded-2xl border border-dashed border-zinc-300 p-6">
+      <section className="mt-8 rounded-2xl border border-dashed border-border p-6">
         <h2 className="text-lg font-semibold">Mis pedidos</h2>
-        <p className="mt-2 text-sm text-zinc-500">
+        <p className="mt-2 text-sm text-muted">
           Próximamente vas a poder ver el historial de tus compras acá.
         </p>
-        <Link href="/productos" className="mt-4 inline-flex text-sm font-medium text-emerald-600">
+        <Link href="/productos" className="mt-4 inline-flex text-sm font-medium text-brand">
           Seguir comprando →
         </Link>
       </section>

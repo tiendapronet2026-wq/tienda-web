@@ -20,7 +20,7 @@ export function CartQuantityControl({
         onClick={() =>
           startTransition(() => updateCartItemQuantity(itemId, quantity - 1))
         }
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary hover:bg-surface-muted disabled:opacity-50"
       >
         −
       </button>
@@ -31,7 +31,7 @@ export function CartQuantityControl({
         onClick={() =>
           startTransition(() => updateCartItemQuantity(itemId, quantity + 1))
         }
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 disabled:opacity-50"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-surface text-text-secondary hover:bg-surface-muted disabled:opacity-50"
       >
         +
       </button>

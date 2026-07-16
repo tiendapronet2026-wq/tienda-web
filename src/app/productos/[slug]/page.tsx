@@ -1,7 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
+import { ProductImage } from "@/components/ProductImage";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice } from "@/lib/utils";
 
@@ -24,34 +24,31 @@ export default async function ProductDetailPage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-      <Link href="/productos" className="text-sm font-medium text-emerald-600 hover:underline">
+      <Link href="/productos" className="text-sm font-medium text-brand hover:underline">
         ← Volver al catálogo
       </Link>
 
       <div className="mt-8 grid gap-10 lg:grid-cols-2">
-        <div className="relative aspect-square overflow-hidden rounded-3xl bg-zinc-100">
-          {product.image_url && (
-            <Image
-              src={product.image_url}
-              alt={product.name}
-              fill
-              className="object-cover"
-              sizes="(max-width: 1024px) 100vw, 50vw"
-              priority
-            />
-          )}
+        <div className="relative aspect-square overflow-hidden rounded-3xl bg-surface-muted">
+          <ProductImage
+            src={product.image_url}
+            alt={product.name}
+            className="object-cover"
+            sizes="(max-width: 1024px) 100vw, 50vw"
+            priority
+          />
         </div>
 
         <div className="space-y-6">
           {product.categories && (
-            <span className="inline-flex rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-emerald-700">
+            <span className="inline-flex rounded-lg bg-brand-soft px-3 py-1 text-xs font-semibold uppercase tracking-wide text-brand">
               {product.categories.name}
             </span>
           )}
-          <h1 className="text-4xl font-bold tracking-tight">{product.name}</h1>
-          <p className="text-3xl font-bold text-emerald-600">{formatPrice(product.price)}</p>
-          <p className="text-lg leading-relaxed text-zinc-600">{product.description}</p>
-          <p className="text-sm text-zinc-500">
+          <h1 className="text-4xl font-bold tracking-tight text-foreground">{product.name}</h1>
+          <p className="text-3xl font-bold text-brand">{formatPrice(product.price)}</p>
+          <p className="text-lg leading-relaxed text-text-secondary">{product.description}</p>
+          <p className="text-sm text-muted">
             {product.track_stock
               ? product.stock > 0
                 ? `${product.stock} unidades disponibles`

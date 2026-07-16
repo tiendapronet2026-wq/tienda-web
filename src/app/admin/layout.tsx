@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/session";
+import { BrandLogo } from "@/components/BrandLogo";
 
 const links = [
   { href: "/admin", label: "Dashboard" },
@@ -12,35 +13,45 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const { profile } = await requireAdmin();
 
   return (
-    <div className="min-h-screen bg-zinc-100">
+    <div className="min-h-screen bg-background">
       <div className="flex min-h-screen">
-        <aside className="hidden w-64 shrink-0 border-r border-zinc-200 bg-white p-6 lg:block">
-          <Link href="/admin" className="text-lg font-bold">
-            Admin <span className="text-emerald-600">TiendaPro</span>
-          </Link>
+        <aside className="hidden w-64 shrink-0 border-r border-border bg-surface p-6 lg:block">
+          <BrandLogo variant="light" href="/admin" />
+          <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-muted">
+            Panel administrador
+          </p>
           <nav className="mt-8 space-y-1">
             {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
-                className="block rounded-lg px-3 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50"
+                className="block rounded-lg px-3 py-2 text-sm font-medium text-text-secondary transition hover:bg-surface-muted hover:text-foreground"
               >
                 {link.label}
               </Link>
             ))}
           </nav>
-          <div className="mt-8 border-t border-zinc-100 pt-4 text-xs text-zinc-500">
+          <div className="mt-8 border-t border-border pt-4 text-xs text-muted">
             {profile.first_name} {profile.last_name}
           </div>
+          <Link href="/" className="mt-3 inline-block text-xs font-medium text-brand hover:underline">
+            Ver tienda
+          </Link>
         </aside>
         <div className="flex-1">
-          <header className="border-b border-zinc-200 bg-white px-4 py-4 sm:px-6 lg:hidden">
+          <header className="border-b border-border bg-surface px-4 py-4 sm:px-6 lg:hidden">
+            <div className="mb-3 flex items-center justify-between">
+              <BrandLogo variant="light" href="/admin" />
+              <Link href="/" className="text-xs font-medium text-brand">
+                Ver tienda
+              </Link>
+            </div>
             <div className="flex flex-wrap gap-2">
               {links.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-full border border-zinc-200 px-3 py-1 text-xs font-medium"
+                  className="rounded-full border border-border px-3 py-1 text-xs font-medium text-text-secondary"
                 >
                   {link.label}
                 </Link>

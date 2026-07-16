@@ -29,7 +29,7 @@ export default async function EditProductPage({
     <div>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <Link href="/admin/productos" className="text-sm text-emerald-600 hover:underline">
+          <Link href="/admin/productos" className="text-sm text-brand hover:underline">
             ← Volver a productos
           </Link>
           <h1 className="mt-2 text-3xl font-bold">{product.name}</h1>
@@ -38,7 +38,7 @@ export default async function EditProductPage({
       </div>
 
       {mensaje === "creado" && (
-        <p className="mt-4 rounded-lg bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <p className="mt-4 rounded-lg bg-brand-soft px-4 py-3 text-sm text-brand">
           Producto creado correctamente.
         </p>
       )}

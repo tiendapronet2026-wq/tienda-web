@@ -84,7 +84,7 @@ from (values
   ('electronica', 'Auriculares Bluetooth', 'auriculares-bluetooth', 'Sonido envolvente con cancelación de ruido activa.', 45999.00, 'https://images.unsplash.com/photo-1505740420928-5e560c06d30e?w=800&q=80', 25),
   ('electronica', 'Smartwatch Pro', 'smartwatch-pro', 'Monitoreo de salud, GPS y notificaciones inteligentes.', 89999.00, 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=800&q=80', 15),
   ('hogar', 'Lámpara LED Minimal', 'lampara-led-minimal', 'Diseño moderno con luz cálida regulable.', 24999.00, 'https://images.unsplash.com/photo-1507473885765-e6ed057f782c?w=800&q=80', 40),
-  ('hogar', 'Set de Tazas Cerámica', 'set-tazas-ceramica', 'Pack x4, apto microondas y lavavajillas.', 12999.00, 'https://images.unsplash.com/photo-1514228742589-6d155d445b8e?w=800&q=80', 60),
+  ('hogar', 'Set de Tazas Cerámica', 'set-tazas-ceramica', 'Pack x4, apto microondas y lavavajillas.', 12999.00, '/products/set-tazas-ceramica.jpg', 60),
   ('accesorios', 'Mochila Urbana', 'mochila-urbana', 'Compartimento para notebook y material resistente al agua.', 34999.00, 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&q=80', 30),
   ('accesorios', 'Botella Térmica', 'botella-termica', 'Mantiene la temperatura hasta 12 horas.', 8999.00, 'https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=800&q=80', 80)
 ) as p(category_slug, name, slug, description, price, image_url, stock)

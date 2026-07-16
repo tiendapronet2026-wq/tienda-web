@@ -21,7 +21,7 @@ export function ProductForm({
 
   return (
     <form
-      className="space-y-6 rounded-2xl border border-zinc-200 bg-white p-6"
+      className="space-y-6 rounded-2xl border border-border bg-surface p-6"
       action={(formData) => {
         startTransition(async () => {
           const result = await action(formData);
@@ -41,7 +41,7 @@ export function ProductForm({
           <select
             name="category_id"
             defaultValue={product?.category_id ?? ""}
-            className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm"
+            className="w-full rounded-xl border border-border px-4 py-3 text-sm"
           >
             <option value="">Sin categoría</option>
             {categories.map((c) => (
@@ -86,7 +86,7 @@ export function ProductForm({
           name="description"
           defaultValue={product?.description ?? ""}
           rows={4}
-          className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm"
+          className="w-full rounded-xl border border-border px-4 py-3 text-sm"
         />
       </div>
 
@@ -106,13 +106,13 @@ export function ProductForm({
         <Checkbox label="Controlar stock" name="track_stock" defaultChecked={product?.track_stock ?? true} />
       </div>
 
-      {message?.error && <p className="text-sm text-red-600">{message.error}</p>}
-      {message?.success && <p className="text-sm text-emerald-600">{message.success}</p>}
+      {message?.error && <p className="text-sm text-error">{message.error}</p>}
+      {message?.success && <p className="text-sm text-brand">{message.success}</p>}
 
       <button
         type="submit"
         disabled={pending}
-        className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
+        className="rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60"
       >
         {pending ? "Guardando..." : product ? "Actualizar producto" : "Crear producto"}
       </button>
@@ -126,7 +126,7 @@ export function StockAdjustForm({ productId }: { productId: string }) {
 
   return (
     <form
-      className="mt-6 rounded-2xl border border-zinc-200 bg-white p-6"
+      className="mt-6 rounded-2xl border border-border bg-surface p-6"
       action={(formData) => {
         startTransition(async () => {
           const result = await adjustStock(formData);
@@ -137,7 +137,7 @@ export function StockAdjustForm({ productId }: { productId: string }) {
       <h3 className="font-semibold">Ajuste manual de stock</h3>
       <input type="hidden" name="product_id" value={productId} />
       <div className="mt-4 grid gap-4 sm:grid-cols-3">
-        <select name="movement_type" className="rounded-xl border border-zinc-200 px-4 py-3 text-sm">
+        <select name="movement_type" className="rounded-xl border border-border px-4 py-3 text-sm">
           <option value="manual_in">Entrada</option>
           <option value="manual_out">Salida</option>
           <option value="adjustment">Ajuste</option>
@@ -148,19 +148,19 @@ export function StockAdjustForm({ productId }: { productId: string }) {
           min={1}
           required
           placeholder="Cantidad"
-          className="rounded-xl border border-zinc-200 px-4 py-3 text-sm"
+          className="rounded-xl border border-border px-4 py-3 text-sm"
         />
         <input
           name="reason"
           placeholder="Motivo"
-          className="rounded-xl border border-zinc-200 px-4 py-3 text-sm"
+          className="rounded-xl border border-border px-4 py-3 text-sm"
         />
       </div>
-      {message && <p className="mt-3 text-sm text-zinc-600">{message}</p>}
+      {message && <p className="mt-3 text-sm text-text-secondary">{message}</p>}
       <button
         type="submit"
         disabled={pending}
-        className="mt-4 rounded-xl bg-zinc-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        className="mt-4 rounded-xl bg-hero px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
       >
         {pending ? "Aplicando..." : "Aplicar ajuste"}
       </button>
@@ -182,7 +182,7 @@ export function ProductToggle({ id, isActive }: { id: string; isActive: boolean 
           });
         }
       }}
-      className="rounded-xl border border-zinc-200 px-4 py-2 text-sm font-semibold"
+      className="rounded-xl border border-border px-4 py-2 text-sm font-semibold"
     >
       {pending ? "..." : isActive ? "Desactivar" : "Activar"}
     </button>
@@ -213,7 +213,7 @@ function Field({
         defaultValue={defaultValue ?? ""}
         required={required}
         step={step}
-        className="w-full rounded-xl border border-zinc-200 px-4 py-3 text-sm"
+        className="w-full rounded-xl border border-border px-4 py-3 text-sm"
       />
     </div>
   );

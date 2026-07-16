@@ -20,3 +20,9 @@ supabase/.temp/
 # misc
 *.log
 .DS_Store
+
+# local audit / QA artifacts (never ship)
+.deploy-audit/
+
+# brand source originals (published copies live under public/brand/)
+Imagenes/

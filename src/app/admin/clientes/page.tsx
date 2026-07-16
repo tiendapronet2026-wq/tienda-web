@@ -14,11 +14,11 @@ export default async function AdminCustomersPage() {
   return (
     <div>
       <h1 className="text-3xl font-bold">Clientes</h1>
-      <p className="mt-2 text-zinc-500">Usuarios registrados en la tienda.</p>
+      <p className="mt-2 text-muted">Usuarios registrados en la tienda.</p>
 
-      <div className="mt-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+      <div className="mt-8 overflow-hidden rounded-2xl border border-border bg-surface">
         <table className="w-full text-left text-sm">
-          <thead className="border-b border-zinc-100 bg-zinc-50">
+          <thead className="border-b border-border bg-surface-muted">
             <tr>
               <th className="px-4 py-3">Nombre</th>
               <th className="px-4 py-3">Teléfono</th>
@@ -29,24 +29,24 @@ export default async function AdminCustomersPage() {
           </thead>
           <tbody>
             {customers?.map((customer) => (
-              <tr key={customer.id} className="border-b border-zinc-50">
+              <tr key={customer.id} className="border-b border-border">
                 <td className="px-4 py-3 font-medium">
                   {customer.first_name} {customer.last_name}
                 </td>
-                <td className="px-4 py-3 text-zinc-500">{customer.phone ?? "—"}</td>
-                <td className="px-4 py-3 text-zinc-500">{customer.document_number ?? "—"}</td>
+                <td className="px-4 py-3 text-muted">{customer.phone ?? "—"}</td>
+                <td className="px-4 py-3 text-muted">{customer.document_number ?? "—"}</td>
                 <td className="px-4 py-3">
                   <span
                     className={`rounded-full px-2 py-1 text-xs font-semibold ${
                       customer.status === "active"
-                        ? "bg-emerald-50 text-emerald-700"
-                        : "bg-red-50 text-red-700"
+                        ? "bg-brand-soft text-brand"
+                        : "bg-error-soft text-error"
                     }`}
                   >
                     {customer.status === "active" ? "Activo" : "Suspendido"}
                   </span>
                 </td>
-                <td className="px-4 py-3 text-zinc-500">
+                <td className="px-4 py-3 text-muted">
                   {new Date(customer.created_at).toLocaleDateString("es-AR")}
                 </td>
               </tr>
@@ -54,7 +54,7 @@ export default async function AdminCustomersPage() {
           </tbody>
         </table>
         {!customers?.length && (
-          <p className="p-8 text-center text-zinc-500">Todavía no hay clientes registrados.</p>
+          <p className="p-8 text-center text-muted">Todavía no hay clientes registrados.</p>
         )}
       </div>
     </div>
