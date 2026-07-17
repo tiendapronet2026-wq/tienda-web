@@ -17,10 +17,13 @@ export function formatCost(value: number, currency = "ARS", maximumFractionDigit
 
 export function formatDate(value: string | null | undefined) {
   if (!value) return "—";
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(value)
+    ? new Date(`${value}T12:00:00-03:00`)
+    : new Date(value);
   return new Intl.DateTimeFormat("es-AR", {
     dateStyle: "medium",
     timeZone: "America/Argentina/Buenos_Aires",
-  }).format(new Date(value));
+  }).format(date);
 }
 
 export function cn(...classes: Array<string | false | null | undefined>) {
