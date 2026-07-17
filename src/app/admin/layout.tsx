@@ -11,6 +11,16 @@ const links = [
   { href: "/admin/clientes", label: "Clientes" },
 ];
 
+const costLinks = [
+  { href: "/admin/costos", label: "Dashboard de costos" },
+  { href: "/admin/proveedores", label: "Proveedores" },
+  { href: "/admin/materiales", label: "Materiales" },
+  { href: "/admin/maquinas", label: "Máquinas" },
+  { href: "/admin/mano-de-obra", label: "Mano de obra" },
+  { href: "/admin/configuracion/costos", label: "Configuración" },
+  { href: "/admin/costos/auditoria", label: "Auditoría" },
+];
+
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { profile } = await requireAdmin();
 
@@ -27,6 +37,18 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </p>
           <nav className="mt-8 space-y-1">
             {links.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="block rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-medium text-text-secondary transition hover:bg-brand-soft hover:text-brand"
+              >
+                {link.label}
+              </Link>
+            ))}
+            <p className="px-3 pb-1 pt-5 text-[10px] font-bold uppercase tracking-[0.16em] text-muted">
+              Costos y producción
+            </p>
+            {costLinks.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
@@ -52,7 +74,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               </Link>
             </div>
             <div className="flex flex-wrap gap-2">
-              {links.map((link) => (
+              {[...links, ...costLinks].map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
