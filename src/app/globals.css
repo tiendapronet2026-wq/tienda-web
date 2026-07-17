@@ -1,25 +1,32 @@
 @import "tailwindcss";
 
 :root {
-  /* Marca — verde “PRO” oscurecido para contraste AA con texto blanco */
+  /* Marca */
   --brand-primary: #0a8f5c;
   --brand-primary-hover: #087a4e;
   --brand-primary-soft: #e6f7ef;
-  /* Azul tecnológico del isotipo */
   --brand-secondary: #0860e8;
   --brand-secondary-hover: #0650c7;
-  /* Cian del gradiente (acentos / highlights) */
+  --brand-secondary-soft: #e8f0fe;
   --brand-accent: #00b4d8;
   --brand-accent-soft: #e0f7fc;
 
+  /* Superficies */
   --background: #f3f6fa;
+  --background-dark: #0b1220;
   --foreground: #0f172a;
   --surface: #ffffff;
+  --surface-elevated: #ffffff;
   --surface-muted: #e8eef5;
   --border: #d0d9e6;
-  --muted: #64748b;
-  --text-secondary: #475569;
+  --border-strong: #b8c4d6;
 
+  /* Texto */
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  /* Semánticos */
   --success: #059669;
   --success-soft: #ecfdf5;
   --warning: #d97706;
@@ -29,6 +36,21 @@
 
   --ring: #0860e8;
   --hero: #0b1220;
+
+  /* Sombras */
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 8px 24px rgba(15, 23, 42, 0.08);
+  --shadow-lg: 0 18px 48px rgba(15, 23, 42, 0.12);
+
+  /* Radios */
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+
+  /* Layout */
+  --container: 72rem;
+  --header-h: 4rem;
 }
 
 @theme inline {
@@ -37,15 +59,20 @@
   --color-brand-soft: var(--brand-primary-soft);
   --color-brand-secondary: var(--brand-secondary);
   --color-brand-secondary-hover: var(--brand-secondary-hover);
+  --color-brand-secondary-soft: var(--brand-secondary-soft);
   --color-brand-accent: var(--brand-accent);
   --color-brand-accent-soft: var(--brand-accent-soft);
   --color-background: var(--background);
+  --color-background-dark: var(--background-dark);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
+  --color-surface-elevated: var(--surface-elevated);
   --color-surface-muted: var(--surface-muted);
   --color-border: var(--border);
-  --color-muted: var(--muted);
+  --color-border-strong: var(--border-strong);
+  --color-muted: var(--text-muted);
   --color-text-secondary: var(--text-secondary);
+  --color-text-primary: var(--text-primary);
   --color-success: var(--success);
   --color-success-soft: var(--success-soft);
   --color-warning: var(--warning);
@@ -54,15 +81,118 @@
   --color-error-soft: var(--error-soft);
   --color-hero: var(--hero);
   --font-sans: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
+  --shadow-sm: var(--shadow-sm);
+  --shadow-md: var(--shadow-md);
+  --shadow-lg: var(--shadow-lg);
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
 }
 
 body {
   background: var(--background);
-  color: var(--foreground);
+  color: var(--text-primary);
   font-family: var(--font-plus-jakarta), ui-sans-serif, system-ui, sans-serif;
 }
 
 *:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+@keyframes tp-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes tp-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+@keyframes tp-orbit {
+  0%,
+  100% {
+    transform: translate(0, 0);
+  }
+  50% {
+    transform: translate(-8px, 6px);
+  }
+}
+
+@keyframes tp-shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.tp-fade-up {
+  animation: tp-fade-up 240ms ease-out both;
+}
+
+.tp-float {
+  animation: tp-float 5.5s ease-in-out infinite;
+}
+
+.tp-float-delayed {
+  animation: tp-float 6.5s ease-in-out 0.8s infinite;
+}
+
+.tp-orbit {
+  animation: tp-orbit 12s ease-in-out infinite;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+.tp-skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-muted);
+}
+
+.tp-skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: tp-shimmer 1.2s infinite;
+}
+
+.tp-container {
+  margin-inline: auto;
+  width: 100%;
+  max-width: var(--container);
+  padding-inline: 1rem;
+}
+
+@media (min-width: 640px) {
+  .tp-container {
+    padding-inline: 1.5rem;
+  }
 }

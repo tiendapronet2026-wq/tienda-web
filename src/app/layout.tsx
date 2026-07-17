@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { headers } from "next/headers";
 import { HeaderNav } from "@/components/Header";
-import { BrandLogo } from "@/components/BrandLogo";
+import { BetaBanner } from "@/components/BetaBanner";
+import { SiteFooter } from "@/components/SiteFooter";
 import { getCartCount } from "@/app/actions/cart";
 import "./globals.css";
 
@@ -18,10 +18,11 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.tiendapro.net";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "TiendaPro | Tu tienda online",
+    default: "TiendaPro | Productos y soluciones personalizadas",
     template: "%s | TiendaPro",
   },
-  description: "Comprá los mejores productos con envío a todo el país.",
+  description:
+    "Convertimos tus ideas en productos reales. Impresiones, impresión 3D, grabado láser, corte de polifan y un catálogo de productos para cada proyecto.",
   applicationName: "TiendaPro",
   manifest: "/site.webmanifest",
   icons: {
@@ -37,14 +38,16 @@ export const metadata: Metadata = {
     locale: "es_AR",
     url: siteUrl,
     siteName: "TiendaPro",
-    title: "TiendaPro | Tu tienda online",
-    description: "Comprá los mejores productos con envío a todo el país.",
+    title: "TiendaPro | Productos y soluciones personalizadas",
+    description:
+      "Convertimos tus ideas en productos reales. Impresiones, impresión 3D, grabado láser, corte de polifan y un catálogo de productos para cada proyecto.",
     images: [{ url: "/brand/og-tiendapro.png", width: 1200, height: 630, alt: "TiendaPro" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "TiendaPro | Tu tienda online",
-    description: "Comprá los mejores productos con envío a todo el país.",
+    title: "TiendaPro | Productos y soluciones personalizadas",
+    description:
+      "Convertimos tus ideas en productos reales. Impresiones, impresión 3D, grabado láser, corte de polifan y un catálogo de productos para cada proyecto.",
     images: ["/brand/og-tiendapro.png"],
   },
 };
@@ -62,35 +65,10 @@ export default async function RootLayout({
     <html lang="es">
       <body className={`${plusJakarta.variable} antialiased`}>
         <div className="min-h-screen bg-background text-foreground">
-          {!isAdminRoute && (
-            <div className="border-b border-warning/30 bg-warning-soft px-4 py-2 text-center text-xs text-warning sm:text-sm">
-              Sitio en etapa beta. Las compras online estarán disponibles
-              próximamente.
-            </div>
-          )}
+          {!isAdminRoute && <BetaBanner />}
           {!isAdminRoute && <HeaderNav cartCount={cartCount} />}
           <main>{children}</main>
-          {!isAdminRoute && (
-            <footer className="border-t border-border bg-hero text-white">
-              <div className="mx-auto flex max-w-6xl flex-col items-center gap-6 px-4 py-10 sm:flex-row sm:justify-between sm:px-6">
-                <BrandLogo variant="dark" href="/" />
-                <nav className="flex flex-wrap items-center justify-center gap-4 text-sm text-white/70">
-                  <Link href="/productos" className="transition hover:text-white">
-                    Productos
-                  </Link>
-                  <Link href="/login" className="transition hover:text-white">
-                    Iniciar sesión
-                  </Link>
-                  <Link href="/carrito" className="transition hover:text-white">
-                    Carrito
-                  </Link>
-                </nav>
-                <p className="text-center text-sm text-white/50">
-                  © {new Date().getFullYear()} TiendaPro. Todos los derechos reservados.
-                </p>
-              </div>
-            </footer>
-          )}
+          {!isAdminRoute && <SiteFooter />}
         </div>
       </body>
     </html>
