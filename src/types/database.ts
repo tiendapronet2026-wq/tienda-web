@@ -54,3 +54,6 @@ export type Profile = {
   created_at: string;
   updated_at: string;
 };
+
+export type { QuoteRequest, QuoteAttachment, QuoteStatus } from "@/lib/quotes";
+export type { ServiceSlug } from "@/lib/services";

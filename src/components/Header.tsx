@@ -8,7 +8,8 @@ import { MobileNav, type MobileNavAuth } from "@/components/MobileNav";
 const desktopLinks = [
   { href: "/", label: "Inicio" },
   { href: "/productos", label: "Productos" },
-  { href: "/#servicios", label: "Servicios" },
+  { href: "/servicios", label: "Servicios" },
+  { href: "/cotizacion", label: "Cotización" },
 ];
 
 export async function HeaderNav({ cartCount = 0 }: { cartCount?: number }) {

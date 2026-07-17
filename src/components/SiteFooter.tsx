@@ -4,7 +4,8 @@ import { BrandLogo } from "@/components/BrandLogo";
 const links = [
   { href: "/", label: "Inicio" },
   { href: "/productos", label: "Productos" },
-  { href: "/#servicios", label: "Servicios" },
+  { href: "/servicios", label: "Servicios" },
+  { href: "/cotizacion", label: "Solicitar cotización" },
   { href: "/login", label: "Login" },
   { href: "/registro", label: "Registro" },
 ];

@@ -89,8 +89,11 @@ export function MobileNav({ auth }: { auth: MobileNavAuth }) {
                 <MobileLink href="/productos" onClick={close}>
                   Productos
                 </MobileLink>
-                <MobileLink href="/#servicios" onClick={close}>
+                <MobileLink href="/servicios" onClick={close}>
                   Servicios
+                </MobileLink>
+                <MobileLink href="/cotizacion" onClick={close}>
+                  Solicitar cotización
                 </MobileLink>
                 <MobileLink href="/carrito" onClick={close}>
                   Carrito
@@ -114,6 +117,9 @@ export function MobileNav({ auth }: { auth: MobileNavAuth }) {
                     </p>
                     <MobileLink href="/mi-cuenta" onClick={close}>
                       Mi cuenta
+                    </MobileLink>
+                    <MobileLink href="/mi-cuenta/cotizaciones" onClick={close}>
+                      Mis cotizaciones
                     </MobileLink>
                     {auth.isAdmin && (
                       <MobileLink href="/admin" onClick={close}>

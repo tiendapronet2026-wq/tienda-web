@@ -35,8 +35,12 @@ export default async function MyAccountPage({
 
       <div className="mb-8 grid gap-4 sm:grid-cols-3">
         <QuickLink href="/productos" title="Explorar catálogo" description="Ver productos disponibles" />
-        <QuickLink href="/carrito" title="Ir al carrito" description="Revisar tu selección" />
-        <QuickLink href="/productos" title="Seguir descubriendo" description="Comparar opciones del catálogo" />
+        <QuickLink
+          href="/mi-cuenta/cotizaciones"
+          title="Mis cotizaciones"
+          description="Seguí el estado de tus solicitudes"
+        />
+        <QuickLink href="/cotizacion" title="Solicitar cotización" description="Contanos tu próximo proyecto" />
       </div>
 
       <div className="rounded-[var(--radius-xl)] border border-border bg-surface p-6 shadow-[var(--shadow-sm)] sm:p-8">

@@ -39,7 +39,7 @@ const trustItems = [
 
 const services = [
   {
-    id: "impresiones",
+    id: "impresion-papel",
     title: "Impresiones en papel",
     description: "Impresiones para trabajos, eventos, material comercial y proyectos personalizados.",
     accent: "from-brand/15 to-brand-soft",
@@ -213,7 +213,7 @@ export default async function HomePage() {
                 Ver productos
               </ButtonLink>
               <ButtonLink
-                href="/#servicios"
+                href="/servicios"
                 size="lg"
                 variant="outline"
                 className="w-full border-white/25 bg-white/5 text-white hover:border-white/40 hover:bg-white/10 hover:text-white sm:w-auto"
@@ -281,9 +281,8 @@ export default async function HomePage() {
 
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {services.map((service) => (
-              <Link
+              <article
                 key={service.id}
-                href="/#contacto"
                 className="group relative flex h-full flex-col overflow-hidden rounded-[var(--radius-xl)] border border-border bg-surface p-6 shadow-[var(--shadow-sm)] transition duration-200 hover:-translate-y-0.5 hover:border-brand/35 hover:shadow-[var(--shadow-md)]"
               >
                 <div
@@ -297,12 +296,28 @@ export default async function HomePage() {
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">{service.title}</h3>
                 <p className="mt-2 flex-1 text-sm leading-relaxed text-text-secondary">{service.description}</p>
-                <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition group-hover:gap-2">
-                  Consultar
-                  <span aria-hidden>→</span>
-                </span>
-              </Link>
+                <div className="mt-5 flex flex-col gap-2">
+                  <Link
+                    href={`/servicios/${service.id}`}
+                    className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand transition group-hover:gap-2"
+                  >
+                    Ver servicio
+                    <span aria-hidden>→</span>
+                  </Link>
+                  <Link
+                    href={`/cotizacion?servicio=${service.id}`}
+                    className="text-sm font-medium text-text-secondary transition hover:text-brand"
+                  >
+                    Solicitar cotización
+                  </Link>
+                </div>
+              </article>
             ))}
+          </div>
+          <div className="mt-8">
+            <ButtonLink href="/servicios" variant="outline">
+              Ver todos los servicios
+            </ButtonLink>
           </div>
         </div>
       </section>
@@ -413,15 +428,17 @@ export default async function HomePage() {
               Proyectos personalizados
             </p>
             <h2 className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-              ¿Tenés una idea y no sabés cómo producirla?
+              ¿Tenés una idea y necesitás producirla?
             </h2>
             <p className="mt-3 text-base leading-relaxed text-text-secondary">
-              Contanos qué necesitás y evaluaremos la mejor técnica para llevar tu proyecto a la
-              realidad.
+              Contanos qué necesitás, adjuntá tu diseño y prepararemos una cotización personalizada.
             </p>
-            <div className="mt-7">
-              <ButtonLink href="/#servicios" size="lg">
-                Conocer nuestros servicios
+            <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+              <ButtonLink href="/cotizacion" size="lg">
+                Solicitar cotización
+              </ButtonLink>
+              <ButtonLink href="/servicios" size="lg" variant="outline">
+                Ver servicios
               </ButtonLink>
             </div>
           </div>
@@ -473,7 +490,7 @@ export default async function HomePage() {
                 <ButtonLink href="/productos" size="sm">
                   Ver productos
                 </ButtonLink>
-                <ButtonLink href="/#servicios" size="sm" variant="outline">
+                <ButtonLink href="/servicios" size="sm" variant="outline">
                   Ver servicios
                 </ButtonLink>
               </div>
@@ -482,22 +499,22 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* Contact / quote teaser */}
+      {/* Contact / quote CTA */}
       <section id="contacto" className="scroll-mt-24 bg-background py-14 sm:py-16">
         <div className="tp-container">
           <div className="mx-auto max-w-2xl rounded-[1.5rem] border border-border bg-surface px-6 py-10 text-center shadow-[var(--shadow-sm)] sm:px-10">
             <p className="text-xs font-semibold uppercase tracking-[0.18em] text-brand">Cotización</p>
             <h2 className="mt-2 text-2xl font-bold tracking-tight text-foreground">
-              Cotización próximamente
+              Contanos tu proyecto
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-text-secondary sm:text-base">
-              Estamos preparando un canal simple para consultar trabajos personalizados. Mientras
-              tanto, explorá nuestros servicios y productos disponibles.
+              Completá el formulario con los detalles de tu idea, adjuntá archivos si los tenés y
+              recibí una cotización personalizada.
             </p>
             <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
-              <ButtonLink href="/#servicios">Volver a servicios</ButtonLink>
-              <ButtonLink href="/productos" variant="outline">
-                Ver productos
+              <ButtonLink href="/cotizacion">Solicitar cotización</ButtonLink>
+              <ButtonLink href="/servicios" variant="outline">
+                Ver servicios
               </ButtonLink>
             </div>
           </div>
@@ -524,7 +541,7 @@ export default async function HomePage() {
               Ver productos
             </ButtonLink>
             <ButtonLink
-              href="/#servicios"
+              href="/servicios"
               size="lg"
               variant="outline"
               className="border-white/25 bg-white/5 text-white hover:border-white/40 hover:bg-white/10 hover:text-white"
