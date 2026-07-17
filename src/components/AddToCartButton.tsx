@@ -2,6 +2,7 @@
 
 import { useTransition } from "react";
 import { addToCart } from "@/app/actions/cart";
+import { Button } from "@/components/ui/Button";
 
 export function AddToCartButton({
   productId,
@@ -13,13 +14,14 @@ export function AddToCartButton({
   const [pending, startTransition] = useTransition();
 
   return (
-    <button
+    <Button
       type="button"
       disabled={disabled || pending}
+      fullWidth
+      size="lg"
       onClick={() => startTransition(() => addToCart(productId))}
-      className="w-full rounded-xl bg-brand px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-hover disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-muted"
     >
-      {pending ? "Agregando..." : disabled ? "Sin stock" : "Agregar al carrito"}
-    </button>
+      {pending ? "Agregando..." : disabled ? "Producto agotado" : "Agregar al carrito"}
+    </Button>
   );
 }

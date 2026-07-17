@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireAdmin } from "@/lib/auth/session";
 import { BrandLogo } from "@/components/BrandLogo";
+import { Badge } from "@/components/ui/Badge";
 
 const links = [
   { href: "/admin", label: "Dashboard" },
@@ -15,9 +16,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <div className="min-h-screen bg-background">
       <div className="flex min-h-screen">
-        <aside className="hidden w-64 shrink-0 border-r border-border bg-surface p-6 lg:block">
+        <aside className="hidden w-64 shrink-0 border-r border-border bg-surface p-6 shadow-[var(--shadow-sm)] lg:block">
           <BrandLogo variant="light" href="/admin" />
-          <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-muted">
+          <div className="mt-3">
+            <Badge tone="beta">Admin</Badge>
+          </div>
+          <p className="mt-3 text-xs font-semibold uppercase tracking-wider text-muted">
             Panel administrador
           </p>
           <nav className="mt-8 space-y-1">
@@ -25,7 +29,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
               <Link
                 key={link.href}
                 href={link.href}
-                className="block rounded-lg px-3 py-2 text-sm font-medium text-text-secondary transition hover:bg-surface-muted hover:text-foreground"
+                className="block rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-medium text-text-secondary transition hover:bg-brand-soft hover:text-brand"
               >
                 {link.label}
               </Link>
@@ -39,7 +43,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </Link>
         </aside>
         <div className="flex-1">
-          <header className="border-b border-border bg-surface px-4 py-4 sm:px-6 lg:hidden">
+          <header className="border-b border-border bg-surface px-4 py-4 shadow-[var(--shadow-sm)] sm:px-6 lg:hidden">
             <div className="mb-3 flex items-center justify-between">
               <BrandLogo variant="light" href="/admin" />
               <Link href="/" className="text-xs font-medium text-brand">
@@ -51,14 +55,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
                 <Link
                   key={link.href}
                   href={link.href}
-                  className="rounded-full border border-border px-3 py-1 text-xs font-medium text-text-secondary"
+                  className="rounded-full border border-border px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:border-brand hover:text-brand"
                 >
                   {link.label}
                 </Link>
               ))}
             </div>
           </header>
-          <main className="p-4 sm:p-6">{children}</main>
+          <main className="p-4 sm:p-6 lg:p-8">{children}</main>
         </div>
       </div>
     </div>

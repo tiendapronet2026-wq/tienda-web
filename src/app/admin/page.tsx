@@ -26,8 +26,8 @@ export default async function AdminDashboardPage() {
 
   return (
     <div>
-      <h1 className="text-3xl font-bold">Dashboard</h1>
-      <p className="mt-2 text-muted">Resumen general de la tienda.</p>
+      <h1 className="text-3xl font-bold tracking-tight text-foreground">Dashboard</h1>
+      <p className="mt-2 text-text-secondary">Resumen operativo de la tienda.</p>
 
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <StatCard label="Productos" value={productsCount ?? 0} href="/admin/productos" />
@@ -35,29 +35,32 @@ export default async function AdminDashboardPage() {
         <StatCard label="Clientes" value={customersCount ?? 0} href="/admin/clientes" />
       </div>
 
-      <section className="mt-8 rounded-2xl border border-border bg-surface p-6">
-        <h2 className="text-lg font-semibold">Stock bajo</h2>
+      <section className="mt-8 rounded-[var(--radius-xl)] border border-border bg-surface p-6 shadow-[var(--shadow-sm)]">
+        <h2 className="text-lg font-semibold text-foreground">Stock bajo</h2>
         {!lowStock?.length ? (
           <p className="mt-4 text-sm text-muted">No hay alertas de stock bajo.</p>
         ) : (
           <ul className="mt-4 space-y-2">
             {lowStock.map((item) => (
-              <li key={item.id} className="flex justify-between text-sm">
-                <Link href={`/admin/productos/${item.id}`} className="text-brand hover:underline">
+              <li
+                key={item.id}
+                className="flex justify-between rounded-[var(--radius-md)] bg-surface-muted/60 px-3 py-2 text-sm"
+              >
+                <Link href={`/admin/productos/${item.id}`} className="font-medium text-brand hover:underline">
                   {item.name}
                 </Link>
-                <span className="text-error">{item.stock} uds.</span>
+                <span className="font-semibold text-error">{item.stock} uds.</span>
               </li>
             ))}
           </ul>
         )}
       </section>
 
-      <section className="mt-8 rounded-2xl border border-dashed border-border p-6 text-sm text-muted">
+      <section className="mt-8 rounded-[var(--radius-xl)] border border-dashed border-border bg-surface p-6 text-sm text-text-secondary">
         <p>
-          <strong>Próxima etapa:</strong> checkout, pedidos y Mercado Pago. Los totales se
-          calcularán en servidor y el stock se descontará al aprobar el pago vía webhook
-          idempotente.
+          <strong className="text-foreground">Próxima etapa:</strong> checkout, pedidos y Mercado
+          Pago. Los totales se calcularán en servidor y el stock se descontará al aprobar el pago
+          vía webhook idempotente.
         </p>
       </section>
     </div>
@@ -68,10 +71,10 @@ function StatCard({ label, value, href }: { label: string; value: number; href: 
   return (
     <Link
       href={href}
-      className="rounded-2xl border border-border bg-surface p-6 transition hover:shadow-md"
+      className="rounded-[var(--radius-xl)] border border-border bg-surface p-6 shadow-[var(--shadow-sm)] transition duration-200 hover:-translate-y-0.5 hover:shadow-[var(--shadow-md)]"
     >
       <p className="text-sm text-muted">{label}</p>
-      <p className="mt-2 text-3xl font-bold">{value}</p>
+      <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">{value}</p>
     </Link>
   );
 }

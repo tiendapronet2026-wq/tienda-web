@@ -1,0 +1,7 @@
+.deploy-audit
+Imagenes
+.git
+.next
+node_modules
+*.log
+.env*
