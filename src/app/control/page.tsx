@@ -1,28 +1,38 @@
 import Link from "next/link";
 import { PageTitle } from "@/components/platform/PageTitle";
 import { StatGrid } from "@/components/platform/StatGrid";
-import { controlRequests, controlTenants } from "@/lib/mock/control-data";
+import { PersistenceSourceBadge } from "@/components/platform/PersistenceSourceBadge";
+import { controlRequests } from "@/lib/mock/control-data";
+import { isExplicitDevMockMode, loadControlTenantsForPanel } from "@/lib/platform/tenant-loader";
 
-export default function ControlHomePage() {
+export default async function ControlHomePage() {
+  const { source, tenants } = await loadControlTenantsForPanel();
+  const mockMode = isExplicitDevMockMode();
+
   return (
     <>
+      {mockMode ? null : <PersistenceSourceBadge source={source} />}
       <PageTitle
         title="TiendaPro Control"
-        description="Plataforma del propietario: tenants, agentes, despliegues e informes. Demo pública sin login."
+        description={
+          mockMode
+            ? "Plataforma del propietario: demo con datos ficticios (desarrollo)."
+            : "Plataforma del propietario: tenants y operaciones desde Supabase TiendaPro."
+        }
       />
       <StatGrid
         stats={[
-          { label: "Tenants demo", value: controlTenants.length },
-          { label: "Solicitudes abiertas", value: controlRequests.length },
-          { label: "Agentes", value: 3, hint: "Pipeline local" },
-          { label: "Auth real", value: "Pendiente", hint: "claims + RLS" },
+          { label: "Tenants", value: tenants.length },
+          { label: "Solicitudes abiertas", value: mockMode ? controlRequests.length : 0 },
+          { label: "Agentes", value: mockMode ? 3 : "—", hint: mockMode ? "Pipeline local" : "Sin mock" },
+          { label: "Persistencia", value: mockMode ? "Mock" : "Supabase" },
         ]}
       />
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <section>
           <h2 className="text-lg font-semibold text-foreground">Clientes (tenants)</h2>
           <ul className="mt-3 space-y-2">
-            {controlTenants.map((t) => (
+            {tenants.map((t) => (
               <li key={t.id} className="rounded-lg border border-border bg-surface px-4 py-3 text-sm">
                 <p className="font-medium text-foreground">{t.name}</p>
                 <p className="text-text-secondary">
@@ -38,11 +48,11 @@ export default function ControlHomePage() {
         <section>
           <h2 className="text-lg font-semibold text-foreground">App cliente SaaS</h2>
           <p className="mt-2 text-sm text-text-secondary">
-            El panel del tenant vive en <strong>/app</strong> (módulos contratados, CRM, informes). No confundir con
-            Control.
+            El panel del tenant vive en <strong>/app</strong> (módulos contratados, CRM, informes). Requiere
+            membresía activa cuando <code className="text-xs">TIENDAPRO_PLATFORM_DB=1</code>.
           </p>
           <Link href="/app" className="mt-4 inline-flex text-sm font-semibold text-brand-secondary">
-            Abrir demo App cliente →
+            Abrir App cliente →
           </Link>
         </section>
       </div>

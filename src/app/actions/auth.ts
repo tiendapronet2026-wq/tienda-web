@@ -6,6 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
 import { SESSION_COOKIE, getSiteUrl } from "@/lib/cart/session";
+import { sanitizeSignInRedirect } from "@/lib/platform/panel-access";
+import { loadSessionPlatformContext } from "@/lib/platform/session-platform";
+import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
 
 export async function signUp(formData: FormData) {
   const supabase = await createClient();
@@ -70,8 +73,25 @@ export async function signIn(formData: FormData) {
     await mergeAnonymousCart(data.user.id);
   }
 
+  let destination = redirectTo;
+  if (data.user) {
+    try {
+      const platform = isTiendaProSupabaseConfigured();
+      const ctx = platform
+        ? await loadSessionPlatformContext(supabase, data.user.id)
+        : {
+            userId: data.user.id,
+            controlOperator: null,
+            memberships: [],
+          };
+      destination = sanitizeSignInRedirect(redirectTo, ctx, platform);
+    } catch {
+      destination = "/acceso-denegado?error=plataforma";
+    }
+  }
+
   revalidatePath("/", "layout");
-  redirect(redirectTo);
+  redirect(destination);
 }
 
 export async function signOut() {

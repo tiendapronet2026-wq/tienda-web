@@ -1,7 +1,8 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
 
-const legacyPrefixes = ["/productos", "/carrito", "/cotizacion", "/mi-cuenta", "/login", "/registro"];
+/** Rutas legacy de tienda demo — no incluir /login ni /registro (auth real). */
+const legacyPrefixes = ["/productos", "/carrito", "/cotizacion", "/mi-cuenta"];
 
 const panelRedirects: Record<string, string> = {
   "/panel/modulos": "/app/modulos",

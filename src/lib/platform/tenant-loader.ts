@@ -1,3 +1,4 @@
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { getDemoTenant } from "@/lib/tenant/context";
 import { resolveEntitlements, type TenantEntitlements } from "@/lib/plans/resolve-modules";
@@ -26,6 +27,11 @@ export function isTiendaProSupabaseConfigured(): boolean {
   );
 }
 
+/** Mock explícito: demos públicas o dev sin flag de plataforma. */
+export function isExplicitDevMockMode(): boolean {
+  return !isTiendaProSupabaseConfigured();
+}
+
 export { TIENDAPRO_SUPABASE_PROJECT_REF };
 
 export type TenantContextResult = {
@@ -34,6 +40,11 @@ export type TenantContextResult = {
   displayName: string;
   tenantId: string;
 };
+
+function redirectPlatformFailure(kind: "membership" | "database" | "auth"): never {
+  if (kind === "database") redirect("/acceso-denegado?error=plataforma");
+  redirect("/acceso-denegado");
+}
 
 export async function loadTenantContextForApp(): Promise<TenantContextResult> {
   const demo = getDemoTenant();
@@ -47,16 +58,14 @@ export async function loadTenantContextForApp(): Promise<TenantContextResult> {
     };
   }
 
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) redirectPlatformFailure("auth");
+
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-
-    if (!user) {
-      return { source: "mock", entitlements: demo.entitlements, displayName: demo.displayName, tenantId: demo.tenantId };
-    }
-
     const { data: membership, error: memErr } = await supabase
       .from("tenant_memberships")
       .select("tenant_id")
@@ -65,9 +74,8 @@ export async function loadTenantContextForApp(): Promise<TenantContextResult> {
       .limit(1)
       .maybeSingle();
 
-    if (memErr || !membership?.tenant_id) {
-      return { source: "mock", entitlements: demo.entitlements, displayName: demo.displayName, tenantId: demo.tenantId };
-    }
+    if (memErr) redirectPlatformFailure("database");
+    if (!membership?.tenant_id) redirectPlatformFailure("membership");
 
     const { data: tenant, error: tenErr } = await supabase
       .from("tenants")
@@ -75,14 +83,14 @@ export async function loadTenantContextForApp(): Promise<TenantContextResult> {
       .eq("id", membership.tenant_id)
       .maybeSingle();
 
-    if (tenErr || !tenant) {
-      return { source: "mock", entitlements: demo.entitlements, displayName: demo.displayName, tenantId: demo.tenantId };
-    }
+    if (tenErr || !tenant) redirectPlatformFailure("database");
 
-    const { data: activations } = await supabase
+    const { data: activations, error: actErr } = await supabase
       .from("tenant_module_activations")
       .select("module_id, state")
       .eq("tenant_id", membership.tenant_id);
+
+    if (actErr) redirectPlatformFailure("database");
 
     const addOnActivations: ModuleId[] = [];
     const suspended: ModuleId[] = [];
@@ -106,7 +114,7 @@ export async function loadTenantContextForApp(): Promise<TenantContextResult> {
       tenantId: membership.tenant_id,
     };
   } catch {
-    return { source: "mock", entitlements: demo.entitlements, displayName: demo.displayName, tenantId: demo.tenantId };
+    redirectPlatformFailure("database");
   }
 }
 
@@ -114,4 +122,50 @@ export async function loadResolvedModulesForApp() {
   const ctx = await loadTenantContextForApp();
   const resolved = resolveEntitlements(ctx.entitlements);
   return { ...ctx, resolved };
+}
+
+export type ControlTenantRow = {
+  id: string;
+  name: string;
+  plan: string;
+  status: string;
+  modulesActive: number;
+};
+
+export async function loadControlTenantsForPanel(): Promise<{
+  source: "mock" | "supabase";
+  tenants: ControlTenantRow[];
+}> {
+  const { controlTenants } = await import("@/lib/mock/control-data");
+
+  if (!isTiendaProSupabaseConfigured()) {
+    return { source: "mock", tenants: controlTenants };
+  }
+
+  const supabase = await createClient();
+  const { data: rows, error } = await supabase
+    .from("tenants")
+    .select("id, display_name, plan_id, status")
+    .order("display_name");
+
+  if (error) redirectPlatformFailure("database");
+
+  const tenants: ControlTenantRow[] = [];
+  for (const row of rows ?? []) {
+    const { count } = await supabase
+      .from("tenant_module_activations")
+      .select("id", { count: "exact", head: true })
+      .eq("tenant_id", row.id)
+      .eq("state", "active");
+
+    tenants.push({
+      id: row.id,
+      name: row.display_name,
+      plan: row.plan_id,
+      status: row.status,
+      modulesActive: count ?? 0,
+    });
+  }
+
+  return { source: "supabase", tenants };
 }

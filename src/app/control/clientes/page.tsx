@@ -1,10 +1,15 @@
 import { PageTitle } from "@/components/platform/PageTitle";
-import { controlTenants } from "@/lib/mock/control-data";
+import { PersistenceSourceBadge } from "@/components/platform/PersistenceSourceBadge";
 import Link from "next/link";
+import { isExplicitDevMockMode, loadControlTenantsForPanel } from "@/lib/platform/tenant-loader";
 
-export default function ControlClientesPage() {
+export default async function ControlClientesPage() {
+  const { source, tenants } = await loadControlTenantsForPanel();
+  const mockMode = isExplicitDevMockMode();
+
   return (
     <>
+      {mockMode ? null : <PersistenceSourceBadge source={source} />}
       <PageTitle
         title="Clientes TiendaPro"
         description="Organizaciones (tenants) que contratan SaaS — no son contactos CRM del tenant."
@@ -20,14 +25,14 @@ export default function ControlClientesPage() {
             </tr>
           </thead>
           <tbody>
-            {controlTenants.map((t) => (
+            {tenants.map((t) => (
               <tr key={t.id} className="border-b border-border last:border-0">
                 <td className="px-4 py-3 font-medium text-foreground">{t.name}</td>
                 <td className="px-4 py-3 text-text-secondary">{t.plan}</td>
                 <td className="px-4 py-3 capitalize text-text-secondary">{t.status}</td>
                 <td className="px-4 py-3">
                   <Link href="/app" className="font-semibold text-brand-secondary">
-                    Demo app
+                    App cliente
                   </Link>
                 </td>
               </tr>

@@ -1,18 +1,15 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  isAppPanelPath,
+  isControlPanelPath,
+  isPrivatePanelPath,
+  resolvePostLoginRedirect,
+} from "@/lib/platform/panel-access";
+import { loadSessionPlatformContext } from "@/lib/platform/session-platform";
+import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
 
-const PRIVATE_PREFIXES = ["/control", "/app"];
-
-function isPrivatePanelPath(pathname: string): boolean {
-  return PRIVATE_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
-}
-
-function safeRedirectPath(value: string | null): string | null {
-  if (!value || !value.startsWith("/")) return null;
-  if (value.startsWith("//")) return null;
-  if (!isPrivatePanelPath(value) && !value.startsWith("/mi-cuenta")) return null;
-  return value;
-}
+const AUTH_PUBLIC_PATHS = ["/login", "/registro", "/recuperar-password", "/actualizar-password"];
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -25,12 +22,13 @@ export async function updateSession(request: NextRequest) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const platformDb = isTiendaProSupabaseConfigured();
 
   if (!url || !key) {
     if (isPrivatePanelPath(pathname)) {
-      const login = request.nextUrl.clone();
-      login.pathname = "/acceso-denegado";
-      return NextResponse.redirect(login);
+      const denied = request.nextUrl.clone();
+      denied.pathname = "/acceso-denegado";
+      return NextResponse.redirect(denied);
     }
     return supabaseResponse;
   }
@@ -70,15 +68,54 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(login);
   }
 
-  if (
-    user &&
-    (pathname === "/login" || pathname === "/registro" || pathname === "/recuperar-password")
-  ) {
-    const dest = safeRedirectPath(request.nextUrl.searchParams.get("redirect")) ?? "/app";
-    const next = request.nextUrl.clone();
-    next.pathname = dest;
-    next.search = "";
-    return NextResponse.redirect(next);
+  if (user && platformDb && isPrivatePanelPath(pathname)) {
+    try {
+      const ctx = await loadSessionPlatformContext(supabase, user.id);
+      const controlPath = isControlPanelPath(pathname);
+      const appPath = isAppPanelPath(pathname);
+      const allowed =
+        (controlPath && ctx.controlOperator !== null) ||
+        (appPath && ctx.memberships.some((m) => m.status === "active"));
+
+      if (!allowed) {
+        const denied = request.nextUrl.clone();
+        denied.pathname = "/acceso-denegado";
+        denied.search = "";
+        return NextResponse.redirect(denied);
+      }
+    } catch {
+      const denied = request.nextUrl.clone();
+      denied.pathname = "/acceso-denegado";
+      denied.searchParams.set("error", "plataforma");
+      return NextResponse.redirect(denied);
+    }
+  }
+
+  if (user && AUTH_PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    try {
+      const ctx = platformDb
+        ? await loadSessionPlatformContext(supabase, user.id)
+        : {
+            userId: user.id,
+            controlOperator: "operator" as const,
+            memberships: [{ tenantId: "demo", role: "admin" as const, status: "active" as const }],
+          };
+
+      const dest = resolvePostLoginRedirect({
+        ctx,
+        redirectParam: request.nextUrl.searchParams.get("redirect"),
+        enforcePlatformAuthorization: platformDb,
+      });
+      const next = request.nextUrl.clone();
+      next.pathname = dest;
+      next.search = "";
+      return NextResponse.redirect(next);
+    } catch {
+      const denied = request.nextUrl.clone();
+      denied.pathname = "/acceso-denegado";
+      denied.searchParams.set("error", "plataforma");
+      return NextResponse.redirect(denied);
+    }
   }
 
   return supabaseResponse;
