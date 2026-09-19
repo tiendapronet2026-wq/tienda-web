@@ -10,7 +10,7 @@ export default function ControlDesplieguesPage() {
       <ul className="mt-4 space-y-2 text-sm text-text-secondary">
         <li>Vercel · proyecto tienda-web · previews en PR</li>
         <li>Producción · merge master · requiere autorización</li>
-        <li>Supabase · ref lwenyboejvwuopsenrwx · SQL remoto pendiente</li>
+        <li>Supabase · ref dnptsudsxrcamtxfiszh · baseline local · SQL remoto pendiente MCP</li>
       </ul>
     </>
   );

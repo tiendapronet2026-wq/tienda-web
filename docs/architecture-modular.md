@@ -1,7 +1,7 @@
 # TiendaPro — Arquitectura modular consolidada
 
 > **Estado real (PR #1):** monolito modular Next.js · datos demo · sin SQL remoto · sin merge producción  
-> **Supabase esperado:** `lwenyboejvwuopsenrwx` · no Casa León
+> **Supabase autorizado:** `dnptsudsxrcamtxfiszh` · ref obsoleta `lwenyboejvwuopsenrwx` · no Casa León
 
 ## 1. Dos capas de producto
 
@@ -79,4 +79,4 @@ Migraciones futuras (por namespace de módulo):
 
 ## 10. Próximo paso único
 
-Ver **`docs/supabase-connection-and-audit.md`**: MCP → ref `lwenyboejvwuopsenrwx` → autorizar migración `20260919120000_platform_saas_core.sql` → `TIENDAPRO_PLATFORM_DB=1`.
+Ver **`docs/supabase-connection-and-audit.md`**: MCP → ref **`dnptsudsxrcamtxfiszh`** → aplicar **`20260920000000_tiendapro_baseline.sql`** (no legacy) → `TIENDAPRO_PLATFORM_DB=1`.

@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { DemoPublicBanner } from "@/components/platform/DemoPublicBanner";
-import { getDemoTenant } from "@/lib/tenant/context";
 
 const nav = [
   { href: "/app", label: "Resumen", icon: "◉" },
@@ -16,7 +14,6 @@ const nav = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const tenant = getDemoTenant();
 
   return (
     <div className="min-h-screen bg-background lg:grid lg:grid-cols-[16rem_1fr]">
@@ -25,7 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Link href="/" className="text-sm font-bold text-foreground">
             App cliente
           </Link>
-          <p className="text-[11px] text-muted truncate">{tenant.displayName}</p>
+          <p className="text-[11px] text-muted">SaaS tenant · sesión requerida</p>
         </div>
         <nav className="flex gap-1 overflow-x-auto px-2 pb-3 lg:flex-col lg:overflow-visible lg:px-3 lg:pb-6">
           {nav.map((item) => {
@@ -50,7 +47,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
       </aside>
       <div className="flex min-w-0 flex-col">
-        <DemoPublicBanner realm="app" />
+        <header className="border-b border-border bg-surface/80 px-4 py-3 sm:px-6">
+          <p className="text-xs text-text-secondary">App cliente · acceso privado · membresía tenant</p>
+        </header>
         <div className="flex-1 px-4 py-6 sm:px-6 lg:px-8">{children}</div>
       </div>
     </div>

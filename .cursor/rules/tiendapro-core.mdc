@@ -7,7 +7,7 @@ alwaysApply: true
 
 - Repo autorizado: **tiendapronet2026-wq/tienda-web** (`master`). Fuente de verdad: **`AGENTS.md`**.
 - Plataforma SaaS **modular multicliente**. **Control** `/control` vs **App** `/app` — no confundir. Ver `docs/architecture-modular.md`.
-- Supabase TiendaPro (código): **`lwenyboejvwuopsenrwx`**. **Sin SQL remoto** hasta acceso verificado. **Nunca** Casa León / `casa-leon-prod`.
+- Supabase TiendaPro: ref **`dnptsudsxrcamtxfiszh`**. Obsoleta: `lwenyboejvwuopsenrwx`. **Sin SQL remoto** hasta MCP liste TiendaPro. **Nunca** Casa León / `casa-leon-prod`.
 - Vercel: proyecto **`tienda-web`** (equipo `tiendapronet2026-wqs-projects`). Verificar deployment **completed**, no solo URL.
 - **Modelos:** Composer **2.5** por defecto; otros solo si el usuario lo pide expresamente; no cambiar modelo de runs Cloud ya activos; la UI de Cursor manda.
 - Autonomía rutinaria; autorización para irreversibles, producción no pedida y SQL remoto.

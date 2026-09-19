@@ -43,7 +43,7 @@ Priorizar arquitectura modular, multi-tenant y extensible.
 |----------|----------------|------------------|
 | **GitHub** | `tiendapronet2026-wq/tienda-web`, rama `master` | Repo autorizado único |
 | **GitHub Actions** | Workflow `CI` (`.github/workflows/ci.yml`): un job `validate` (lint + build) | Concurrencia solo dentro de este workflow; no cancela Vercel ni migraciones |
-| **Supabase (código)** | Ref en `next.config.ts`: **`lwenyboejvwuopsenrwx`** | Migraciones en `supabase/migrations/` — **no ejecutar SQL remoto** hasta MCP/acceso verificado al proyecto TiendaPro |
+| **Supabase (código)** | Ref autorizada: **`dnptsudsxrcamtxfiszh`** (`src/lib/platform/supabase-project.ts`, `next.config.ts`) | Baseline `supabase/migrations/20260920000000_tiendapro_baseline.sql` — **no SQL remoto** hasta MCP vea este proyecto (no Casa León) |
 | **Supabase (MCP agente)** | Org visible incluye **`casa-leon-prod`** | **Prohibido** usar Casa León para TiendaPro |
 | **Sitio público** | `NEXT_PUBLIC_SITE_URL` → **`https://www.tiendapro.net`** (`.env.example`) | Redirects de auth |
 | **Vercel** | Proyecto: **`tiendapronet2026-wqs-projects` / `tienda-web`** (integración GitHub) | Previews en PR; producción en `master`. **Estado válido**: check GitHub `success` y descripción tipo *Deployment has completed* — no asumir éxito solo por URL pendiente |
@@ -90,7 +90,7 @@ Variables (nombres): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ### Supabase
 
-- Proyecto TiendaPro: ref **`lwenyboejvwuopsenrwx`** (código). **Sin SQL remoto** hasta acceso MCP/dashboard verificado al proyecto correcto.
+- Proyecto TiendaPro: ref **`dnptsudsxrcamtxfiszh`**. Ref **`lwenyboejvwuopsenrwx`** obsoleta — no operar. **Sin SQL remoto** hasta MCP liste este proyecto (hoy solo `casa-leon-prod`).
 - **No usar** `casa-leon-prod` ni credenciales ajenas.
 - Migraciones versionadas; RLS y permisos mínimos; sin `service_role` en cliente.
 - Multi-tenant futuro: aislar datos por cliente/proyecto.

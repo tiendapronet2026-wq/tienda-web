@@ -26,11 +26,11 @@ export function PublicHeader() {
           ))}
         </nav>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <ButtonLink href="/control" size="sm" variant="outline" className="hidden sm:inline-flex">
-            Control (demo)
+          <ButtonLink href="/login?redirect=/control" size="sm" variant="outline" className="hidden sm:inline-flex">
+            Control
           </ButtonLink>
-          <ButtonLink href="/app" size="sm" variant="secondary">
-            App cliente (demo)
+          <ButtonLink href="/login?redirect=/app" size="sm" variant="secondary">
+            App cliente
           </ButtonLink>
         </div>
       </div>

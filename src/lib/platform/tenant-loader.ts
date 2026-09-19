@@ -3,24 +3,30 @@ import { getDemoTenant } from "@/lib/tenant/context";
 import { resolveEntitlements, type TenantEntitlements } from "@/lib/plans/resolve-modules";
 import type { ModuleId } from "@/lib/modules/registry";
 import type { PlanId } from "@/lib/plans/catalog";
-
-const EXPECTED_PROJECT_REF = "lwenyboejvwuopsenrwx";
+import {
+  isAuthorizedTiendaProSupabaseUrl,
+  TIENDAPRO_SUPABASE_PROJECT_REF,
+} from "@/lib/platform/supabase-project";
 
 export function getSupabaseProjectRefFromEnv(): string | null {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   if (!url) return null;
   try {
-    const host = new URL(url).hostname;
-    return host.split(".")[0] || null;
+    return new URL(url).hostname.split(".")[0] || null;
   } catch {
     return null;
   }
 }
 
 export function isTiendaProSupabaseConfigured(): boolean {
-  const ref = getSupabaseProjectRefFromEnv();
-  return ref === EXPECTED_PROJECT_REF && process.env.TIENDAPRO_PLATFORM_DB === "1";
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return (
+    isAuthorizedTiendaProSupabaseUrl(url) &&
+    process.env.TIENDAPRO_PLATFORM_DB === "1"
+  );
 }
+
+export { TIENDAPRO_SUPABASE_PROJECT_REF };
 
 export type TenantContextResult = {
   source: "mock" | "supabase";
