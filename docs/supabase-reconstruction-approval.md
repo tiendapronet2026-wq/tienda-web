@@ -31,54 +31,33 @@ Auditoría remota completada el **2026-09-19** exclusivamente vía MCP `supabase
 
 Archivo: **`supabase/migrations/20260920000000_tiendapro_baseline.sql`**
 
-### Alcance destructivo explícito (líneas 10–17)
+### Alcance (no destructivo)
 
-```sql
-drop schema if exists public cascade;
-create schema public;
--- … grants …
+- **`create schema if not exists public`** + `create table if not exists` + seeds `on conflict do nothing`.
+- **Sin** `DROP SCHEMA public CASCADE`.
+- Trigger **`profiles_prevent_privilege_self_escalation`**: bloquea auto-cambio de `role`, `status`, `id`, `created_at`.
+- Política **`profiles_self_update`**: solo `first_name` / `last_name` / `updated_at` vía RLS + trigger.
+- **`tenant_modules_write`**: solo **`is_control_owner()`** (licencias vía Control; tenants solo lectura).
+
+### Validación local (PostgreSQL 16 aislado)
+
+```bash
+./supabase/tests/isolated/run.sh
 ```
 
-**Elimina en el proyecto autorizado:**
+Pruebas en `supabase/tests/isolated/99_rls_assertions.sql`:
 
-- **Todo** el esquema `public`: tablas, vistas, funciones, triggers, políticas RLS, secuencias, tipos y datos en `public`.
-- Objetos legacy probables si existían (tienda, productos, pedidos, cotizaciones, costos, perfiles antiguos, etc.).
-
-**No elimina directamente:**
-
-- Esquema **`auth`** (usuarios Supabase Auth) — los usuarios pueden seguir existiendo.
-- Esquema **`storage`** (buckets/objetos) — no se toca en esta migración; revisar buckets huérfanos aparte.
-- Extensiones instaladas a nivel DB (p. ej. `pgcrypto` se re-afirma con `create extension if not exists`).
-
-**Recrea después del DROP:**
-
-- `profiles` + trigger `on_auth_user_created` en **`auth.users`**
-- Núcleo SaaS: `module_catalog`, `commercial_plans`, `tenants`, `control_operators`, `tenant_memberships`, `tenant_module_activations`, `platform_projects`, `platform_audit_log`
-- Funciones helper RLS + políticas en todas las tablas anteriores
-- Seeds + tenants de prueba **`tenant-alpha-test`** y **`tenant-beta-test`**
-
-### Riesgo colateral
-
-- Si existían triggers/políticas en `public` referenciados desde fuera de `public`, el CASCADE puede afectar dependencias en `public` únicamente.
-- Usuarios Auth sin fila en `profiles` recibirán perfil al próximo evento de registro; usuarios existentes pueden quedar sin `profiles` hasta backfill manual.
-
-## Alternativa más acotada (evaluación)
-
-| Enfoque | Ventajas | Desventajas |
-|---------|----------|-------------|
-| **`DROP SCHEMA public CASCADE`** (baseline actual) | Reproducible, alineado con reinicio 3.0, una sola migración | Destructivo total en `public`; requiere backup verificado |
-| **DROP TABLE solo legacy** (lista tras `list_tables`) | Menor blast radius si quedan pocos objetos | Frágil si el remoto diverge del repo; no garantiza estado limpio SaaS |
-| **Nuevo proyecto Supabase** | Aislamiento máximo | Costo/operación extra; **no solicitado** (reutilizar `dnptsudsxrcamtxfiszh`) |
-
-**Recomendación:** mantener el baseline con `DROP SCHEMA public CASCADE` **solo después** de backup verificado y confirmación explícita del propietario, con ref comprobada vía MCP.
+1. Usuario Alpha ve módulos de su tenant, no los de Beta.
+2. Admin tenant **no** puede insertar activaciones de módulo.
+3. Control owner **sí** puede activar módulo (`stock` en Beta).
+4. Usuario **no** puede escalar `role` en `profiles`; sí puede cambiar `first_name`.
 
 ## Checklist de aprobación (propietario)
 
 Responder **sí** explícitamente a:
 
 1. Proyecto Supabase = **`dnptsudsxrcamtxfiszh`** (verificado en MCP o Dashboard).
-2. Respaldo realizado y verificado (indicar método: backup dashboard / export SQL).
-3. Autorizo aplicar **`20260920000000_tiendapro_baseline.sql`** (incluye `DROP SCHEMA public CASCADE`).
+2. Autorizo aplicar **`20260920000000_tiendapro_baseline.sql`** (migración **no destructiva**; remoto hoy con `public` vacío).
 
 ## Tras aprobación (orden operativo — no ejecutado aún)
 
