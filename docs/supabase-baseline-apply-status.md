@@ -1,27 +1,32 @@
-# Baseline `20260920000000` — intento de aplicación remota
+# Baseline aplicado — `dnptsudsxrcamtxfiszh`
 
-> Proyecto autorizado: **`dnptsudsxrcamtxfiszh`**  
-> Commit SQL aprobado: **`d664337`** (HEAD al intento)
+> Fecha: 2026-09-19 · SQL repo: commit **`d664337`**  
+> Backup gestionado: **omitido** (autorización propietario, proyecto vacío documentado)
 
-## Pre-checks (MCP `supabase-tiendapro`, solo lectura)
+## Migraciones registradas (remoto)
 
-| Check | Resultado |
-|-------|-----------|
-| `public` tablas | **0** (`list_tables` → `[]`) |
-| Migraciones remotas | **0** (`list_migrations` → `[]`) |
-| Backup gestionado | **Omitido** por autorización explícita del propietario (proyecto vacío documentado) |
-| Usuario DB MCP | `supabase_read_only_user`, `transaction_read_only=on` |
+| Versión (Supabase) | Nombre | Contenido |
+|--------------------|--------|-----------|
+| `20260919215500` | `20260920000000_tiendapro_baseline` | Entrada inicial vacía (placeholder técnico en primer intento) |
+| `20260919215631` | `20260920000000_tiendapro_baseline_schema` | **Baseline completo** (d664337) |
 
-## Bloqueo de ejecución
+El esquema efectivo corresponde a la segunda entrada. No re-aplicar sin revisar historial.
 
-- `apply_migration`: **no expuesto** en MCP scoped con `read_only=true`.
-- `execute_sql` DDL: `ERROR 25006: cannot execute CREATE TABLE in a read-only transaction`.
-- **Migración remota no aplicada.** Estado remoto sin cambios.
+## Esquema `public` (post-aplicación)
 
-## Para reintentar (una acción)
+- **9 tablas**, todas con **RLS enabled**
+- **8** módulos catálogo · **4** planes · **2** tenants (`tenant-alpha-test`, `tenant-beta-test`)
+- **6** filas `tenant_module_activations`
+- **`anon`:** sin `SELECT` en `module_catalog` (`has_table_privilege` → false)
 
-En **Cursor → Settings → Tools & MCP**, editar **`supabase-tiendapro`** y usar URL **sin** `read_only=true`:
+## Pruebas RLS remotas (MCP write, usuarios *test* desechables)
 
-`https://mcp.supabase.com/mcp?project_ref=dnptsudsxrcamtxfiszh&features=database,docs`
+- Usuarios `@tiendapro.local` + memberships alpha/beta + control owner de prueba
+- Alpha **no** ve módulos de Beta bajo rol `authenticated` + JWT simulado
+- Admin Beta **no** inserta activación `finanzas` (bloqueado)
 
-Reautenticar, reanudar el agente y pedir aplicar el baseline. Tras éxito, volver a añadir `read_only=true`.
+## MCP
+
+- Escritura usada solo para migración + verificación
+- Repo: `.cursor/mcp.json` restaurado con **`read_only=true`**
+- Reautenticar MCP en Cursor si la sesión activa sigue en modo escritura (ver informe al usuario)
