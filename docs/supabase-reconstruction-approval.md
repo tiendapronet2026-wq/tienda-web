@@ -7,16 +7,25 @@
 
 | Verificación | Resultado |
 |--------------|-----------|
-| MCP OAuth activo (plugin Supabase) | Org visible: **sistemacasaleon-sketch's Org** — solo proyecto **`casa-leon-prod`** |
-| `get_project(dnptsudsxrcamtxfiszh)` | Permiso denegado |
-| `execute_sql` en ref TiendaPro | Permiso denegado |
-| Auditoría remota de tablas / migraciones / backups | **No realizada** (bloqueada por permisos) |
+| MCP **`supabase-tiendapro`** (scoped `dnptsudsxrcamtxfiszh`, read_only) | **OK** — `list_tables`, `list_migrations`, `execute_sql` SELECT |
+| Esquema **`public`** | Existe; **0 tablas/vistas/funciones** (vacío) |
+| **`list_migrations` / historial Supabase** | **[]** — ninguna migración aplicada vía CLI/MCP |
+| **`auth.users`** | 0 filas |
+| **`storage.buckets`** | 0 |
+| Postgres | 17.6 · extensiones instaladas: `pgcrypto`, `uuid-ossp`, `pg_stat_statements`, `supabase_vault`, etc. |
 
-Hasta conectar MCP al proyecto TiendaPro, el inventario real de objetos en `public` es **desconocido**. La auditoría remota pendiente incluye:
+Auditoría remota completada el **2026-09-19** exclusivamente vía MCP `supabase-tiendapro`. Casa León no consultado.
 
-1. `list_tables` (schemas `public`, `storage` si aplica)
-2. `list_migrations` (historial remoto vs repo)
-3. Dashboard → Database → Backups (plan Free: backups automáticos limitados; export lógico vía SQL read-only si no hay snapshot)
+### Plan de respaldo (antes del baseline)
+
+| Método | Viabilidad | Notas |
+|--------|------------|--------|
+| **Dashboard → Database → Backups** | Recomendado | Snapshot gestionado por Supabase según plan del proyecto; verificar en [Dashboard TiendaPro](https://supabase.com/dashboard/project/dnptsudsxrcamtxfiszh/database/backups). |
+| **Export lógico `public`** | Bajo valor hoy | `public` sin objetos; no hay datos de negocio que exportar. |
+| **Export Auth / Storage** | Opcional | 0 usuarios y 0 buckets; registro documental suficiente con conteos de esta auditoría. |
+| **Copia del baseline en repo** | Ya hecho | `supabase/migrations/20260920000000_tiendapro_baseline.sql` — reproducible post-aprobación. |
+
+**Respaldo verificable mínimo aceptable:** confirmación en dashboard de backup disponible **o** captura de esta auditoría (esquema `public` vacío) + tu aprobación explícita abajo.
 
 ## Migración preparada en repo
 
