@@ -24,6 +24,19 @@ En **Authentication → URL Configuration** del proyecto `dnptsudsxrcamtxfiszh`,
 - Site URL (o usar `NEXT_PUBLIC_SITE_URL` coherente)
 - Redirect URLs: `{NEXT_PUBLIC_SITE_URL}/login`, `{NEXT_PUBLIC_SITE_URL}/actualizar-password`, etc.
 
+### Redirect URLs Preview (aplicadas 2026-09-19 vía `supabase config push`)
+
+**Site URL remota:** sin cambios en este paso (`http://localhost:3000` en proyecto; producción Vercel no tocada).
+
+**Additional redirect URLs añadidas:**
+
+- `https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/login`
+- `https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/actualizar-password`
+- `https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/**`
+- `https://*-tiendapronet2026-wqs-projects.vercel.app/**`
+
+Réplica en repo: `supabase/config.toml` → `[auth].additional_redirect_urls`.
+
 ## Checklist Preview
 
 1. Configurar las cuatro variables de la primera tabla en Vercel → Settings → Environment Variables → **Preview only**.
