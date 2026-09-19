@@ -14,13 +14,11 @@
 
 ### Única acción necesaria (sin pegar claves en chat)
 
-1. Abrir **Cursor → Settings → MCP → Supabase**.
-2. Iniciar sesión / reautorizar con la **cuenta u organización donde vive el proyecto `dnptsudsxrcamtxfiszh`** (Dashboard Supabase → Project Settings → General).
-3. Si Casa León comparte cuenta: ampliar OAuth para incluir **ambos proyectos**; **no** eliminar Casa León del dashboard.
-4. Si TiendaPro está en otra cuenta: usar **Sign in with different account** / conexión adicional MCP (sin borrar la sesión web de Casa León).
-5. Confirmar con el agente: `list_projects` debe listar **`dnptsudsxrcamtxfiszh`** (nombre distinto de `casa-leon-prod`).
+Ver guía detallada: **`docs/supabase-mcp-tiendapro.md`**.
 
-Hasta entonces: **no se aplica SQL remoto** (migración preparada en repo solamente).
+Resumen: autenticar un servidor MCP **scoped** a TiendaPro (`project_ref=dnptsudsxrcamtxfiszh`, `read_only=true`) con la **cuenta Supabase que posee ese proyecto**, sin desconectar Casa León. Enlace al proyecto: [Dashboard TiendaPro](https://supabase.com/dashboard/project/dnptsudsxrcamtxfiszh).
+
+Antes de SQL destructivo: leer **`docs/supabase-reconstruction-approval.md`** y aprobar explícitamente.
 
 ## Esquema en repositorio
 
