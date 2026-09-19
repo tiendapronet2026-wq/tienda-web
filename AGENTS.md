@@ -18,7 +18,22 @@ TiendaPro evoluciona hacia una plataforma única que combina:
 4. **Centro de coordinación** de agentes e informes operativos.
 5. **Plataforma base** para desarrollar y administrar futuros proyectos independientes.
 
-El código legado (catálogo, carrito, cotizaciones, costos de impresión, etc.) es **transitorio**: puede sustituirse durante la reconstrucción y **no debe condicionar** módulos, rutas ni esquema definitivos. Priorizar arquitectura modular, multi-proyecto y extensible.
+El código legado (catálogo, carrito, cotizaciones, costos de impresión, etc.) es **transitorio**: puede sustituirse durante la reconstrucción y **no debe condicionar** módulos, rutas ni esquema definitivos.
+
+### Arquitectura modular SaaS (prioridad producto)
+
+TiendaPro es una **plataforma SaaS modular comercializable**, no un monolito donde todo depende de todo.
+
+- **Monolito modular** en un solo repo/despliegue por defecto; **sin microservicios prematuros** ni infra extra innecesaria.
+- **Núcleo común** (`src/lib/core/`): organizaciones, usuarios, roles/permisos, proyectos, planes, catálogo de módulos, activaciones, configuración, auditoría.
+- **Módulos independientes** (`src/lib/modules/`): venta online, stock, POS, CRM, chatbot, delivery, finanzas, reportes — cada uno con id, estado, config, dependencias, permisos, contratos y namespace de migración.
+- **Planes comerciales** (`src/lib/plans/`): definen módulos incluidos; add-ons, suspensión sin borrar datos, cambio de plan — **sin cobros ni suscripciones automáticas** hasta fase autorizada.
+- **Multicliente** (`src/lib/tenant/`): `tenantId` aísla datos; **RLS y checks en servidor**; ocultar UI ≠ módulo desactivado.
+- **Integración**: eventos/contratos (`src/lib/core/contracts.ts`, `src/lib/modules/contracts.ts`); evitar dependencias circulares; compartir entidades vía núcleo (no duplicar clientes/usuarios/productos).
+- **Despliegue**: modo `shared` | `dedicated`, dominios custom preparados — **sin aprovisionamiento automático** de dominios/BD en esta fase.
+- Documentación de referencia: `docs/architecture-modular.md`.
+
+Priorizar arquitectura modular, multi-tenant y extensible.
 
 ---
 
@@ -95,15 +110,17 @@ Variables (nombres): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ### Stack actual (transitorio hacia la visión)
 
-- **Next.js 15** (App Router), **React 19**, **Tailwind CSS 4**, **Supabase**.
-- Código existente en `src/` y `supabase/` sirve de base operativa hasta la reconstrucción modular.
-- Nuevos módulos alineados a la visión: áreas públicas (servicios, showroom), área privada (clientes, proyectos, agentes/informes), núcleo multi-proyecto.
+- **Next.js 15** (App Router), **React 19**, **Tailwind CSS 4**, **Supabase** (cuando haya acceso verificado).
+- Código legacy en `src/app/admin`, catálogo antiguo: no expandir; redirecciones hacia `/panel` y rutas 3.0.
+- Código nuevo: `src/lib/core`, `src/lib/modules`, `src/lib/plans`, `src/lib/tenant`, UI en `/modulos`, `/demos`, `/panel`.
 
 ### Arquitectura objetivo (orientación)
 
-- Separar **público** / **privado** / **operaciones agentes** / **proyectos hijos** en límites claros (rutas, RLS, tenants).
-- Informes de agentes: formato estándar (plantilla al final); almacenamiento y dashboard en fases posteriores.
-- Legacy (carrito, cotizaciones clásicas, cost engine de impresión): no expandir salvo hotfix; preferir reemplazo planificado.
+- **No** acoplar funcionalidades en un solo bloque; activar/desactivar por módulo y plan.
+- Público: web comercial + catálogo visual de módulos/planes + showroom ficticio.
+- Privado: panel por tenant con entitlements resueltos en servidor (mock hasta Supabase).
+- Agentes: capas en `src/lib/agents/`; chatbot es **módulo** optional, no atajo global.
+- Informes: plantilla estándar al final de este archivo; módulo `reportes` cuando corresponda.
 
 ### Seguridad
 
@@ -153,3 +170,4 @@ No incluir secretos, tokens ni datos personales de clientes.
 
 - **2026-09-19**: Creación inicial `AGENTS.md`, `.cursor/rules/`, CI mínimo (PR #1).
 - **2026-09-19**: Visión definitiva plataforma, política de modelos, registro Vercel verificado, aclaración legacy vs reconstrucción.
+- **2026-09-19**: Arquitectura modular SaaS — core, modules, plans, tenant; catálogo `/modulos`; informe `docs/architecture-modular.md`.

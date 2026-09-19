@@ -1,23 +1,50 @@
 import Link from "next/link";
 import { PageTitle } from "@/components/platform/PageTitle";
 import { StatGrid } from "@/components/platform/StatGrid";
+import { ModuleCatalogCard } from "@/components/platform/ModuleCatalogCard";
 import { panelStats, mockTasks, mockProjects } from "@/lib/mock/panel-data";
+import { getDemoTenant } from "@/lib/tenant/context";
+import { resolveActiveModules } from "@/lib/plans/activation";
+import { getPlan } from "@/lib/plans/catalog";
+import { MODULE_REGISTRY } from "@/lib/modules/registry";
+import type { ModuleId } from "@/lib/modules/registry";
 
 export default function PanelHomePage() {
+  const tenant = getDemoTenant();
+  const plan = getPlan(tenant.entitlements.planId);
+  const { active, catalog } = resolveActiveModules(tenant.entitlements);
+  const activeModules = catalog
+    .filter((c) => c.state === "active")
+    .slice(0, 4)
+    .map((c) => MODULE_REGISTRY[c.moduleId as ModuleId]);
+
   return (
     <>
       <PageTitle
         title="Resumen"
-        description="Vista general del centro de operaciones. Métricas y listados con datos ficticios."
+        description={`Centro de operaciones · ${tenant.displayName} · plan ${plan.name} (demo).`}
       />
       <StatGrid
         stats={[
-          { label: "Clientes activos (demo)", value: panelStats.activeClients },
+          { label: "Módulos activos", value: active.length },
           { label: "Proyectos abiertos", value: panelStats.openProjects },
           { label: "Tareas esta semana", value: panelStats.tasksDueWeek },
-          { label: "Ejecuciones agente hoy", value: panelStats.agentRunsToday, hint: "Sin integraciones externas" },
+          { label: "Modo despliegue", value: tenant.config.deploymentMode },
         ]}
       />
+
+      <section className="mt-10">
+        <h2 className="text-lg font-semibold text-foreground">Módulos activos (muestra)</h2>
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          {activeModules.map((m) => (
+            <ModuleCatalogCard key={m.id} module={m} state="active" />
+          ))}
+        </div>
+        <Link href="/panel/modulos" className="mt-3 inline-block text-sm font-semibold text-brand">
+          Gestionar módulos y plan →
+        </Link>
+      </section>
+
       <div className="mt-10 grid gap-8 lg:grid-cols-2">
         <section>
           <h2 className="text-lg font-semibold text-foreground">Proyectos recientes</h2>

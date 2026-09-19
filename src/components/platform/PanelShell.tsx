@@ -6,6 +6,7 @@ import { MockBadge } from "@/components/platform/MockBadge";
 
 const nav = [
   { href: "/panel", label: "Resumen", icon: "◉" },
+  { href: "/panel/modulos", label: "Módulos", icon: "◫" },
   { href: "/panel/clientes", label: "Clientes", icon: "◎" },
   { href: "/panel/proyectos", label: "Proyectos", icon: "▣" },
   { href: "/panel/tareas", label: "Tareas", icon: "☑" },

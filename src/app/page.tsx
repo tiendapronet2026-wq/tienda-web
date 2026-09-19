@@ -30,6 +30,9 @@ export default function HomePage() {
               <ButtonLink href="/servicios" size="lg">
                 Ver servicios digitales
               </ButtonLink>
+              <ButtonLink href="/modulos" size="lg" variant="secondary">
+                Catálogo de módulos
+              </ButtonLink>
               <ButtonLink
                 href="/demos"
                 size="lg"
