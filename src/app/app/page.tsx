@@ -2,26 +2,26 @@ import Link from "next/link";
 import { PageTitle } from "@/components/platform/PageTitle";
 import { StatGrid } from "@/components/platform/StatGrid";
 import { ModuleCatalogCard } from "@/components/platform/ModuleCatalogCard";
-import { getDemoTenant } from "@/lib/tenant/context";
-import { resolveEntitlements } from "@/lib/plans/resolve-modules";
-import { getPlan } from "@/lib/plans/catalog";
+import { PersistenceSourceBadge } from "@/components/platform/PersistenceSourceBadge";
 import { MODULE_REGISTRY } from "@/lib/modules/registry";
 import type { ModuleId } from "@/lib/modules/registry";
+import { getPlan } from "@/lib/plans/catalog";
+import { loadResolvedModulesForApp } from "@/lib/platform/tenant-loader";
 
-export default function AppHomePage() {
-  const tenant = getDemoTenant();
-  const plan = getPlan(tenant.entitlements.planId);
-  const resolved = resolveEntitlements(tenant.entitlements);
+export default async function AppHomePage() {
+  const { source, entitlements, displayName, resolved } = await loadResolvedModulesForApp();
+  const plan = getPlan(entitlements.planId);
   const sample = resolved.catalog.filter((c) => c.state === "active").slice(0, 3);
 
   return (
     <>
-      <PageTitle title="Resumen tenant" description={`Plan ${plan.name} · precios de ejemplo, no tarifa final.`} />
+      <PersistenceSourceBadge source={source} />
+      <PageTitle title="Resumen tenant" description={`${displayName} · plan ${plan.name} (modelo configurable).`} />
       <StatGrid
         stats={[
           { label: "Módulos activos", value: resolved.active.length },
-          { label: "Suspendidos", value: tenant.entitlements.suspended.length },
-          { label: "Tenant", value: tenant.tenantId.slice(0, 12) + "…" },
+          { label: "Suspendidos", value: entitlements.suspended.length },
+          { label: "Tenant", value: entitlements.tenantId.slice(0, 12) + "…" },
           { label: "Integraciones", value: "Dinámicas", hint: "Según módulos activos" },
         ]}
       />

@@ -1,18 +1,18 @@
 import { PageTitle } from "@/components/platform/PageTitle";
 import { ModuleCatalogCard } from "@/components/platform/ModuleCatalogCard";
-import { getDemoTenant } from "@/lib/tenant/context";
-import { resolveEntitlements } from "@/lib/plans/resolve-modules";
-import { getPlan } from "@/lib/plans/catalog";
+import { PersistenceSourceBadge } from "@/components/platform/PersistenceSourceBadge";
 import { MODULE_REGISTRY } from "@/lib/modules/registry";
 import type { ModuleId } from "@/lib/modules/registry";
+import { getPlan } from "@/lib/plans/catalog";
+import { loadResolvedModulesForApp } from "@/lib/platform/tenant-loader";
 
-export default function AppModulosPage() {
-  const tenant = getDemoTenant();
-  const resolved = resolveEntitlements(tenant.entitlements);
-  const plan = getPlan(tenant.entitlements.planId);
+export default async function AppModulosPage() {
+  const { source, entitlements, resolved } = await loadResolvedModulesForApp();
+  const plan = getPlan(entitlements.planId);
 
   return (
     <>
+      <PersistenceSourceBadge source={source} />
       <PageTitle
         title="Módulos contratados"
         description={`Plan ${plan.name}. Activación efectiva según dependencias e integraciones opcionales.`}

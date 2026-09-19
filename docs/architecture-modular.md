@@ -79,4 +79,4 @@ Migraciones futuras (por namespace de módulo):
 
 ## 10. Próximo paso único
 
-**Conectar Supabase TiendaPro verificado → migración núcleo + RLS + auth real → reemplazar mocks en `/app` por datos tenant-scoped.**
+Ver **`docs/supabase-connection-and-audit.md`**: MCP → ref `lwenyboejvwuopsenrwx` → autorizar migración `20260919120000_platform_saas_core.sql` → `TIENDAPRO_PLATFORM_DB=1`.

@@ -1,14 +1,16 @@
 import { PageTitle } from "@/components/platform/PageTitle";
+import { PersistenceSourceBadge } from "@/components/platform/PersistenceSourceBadge";
 import { mockClients } from "@/lib/mock/panel-data";
-import { getDemoTenant } from "@/lib/tenant/context";
 import { isModuleEnabledForTenant } from "@/lib/plans/resolve-modules";
+import { loadTenantContextForApp } from "@/lib/platform/tenant-loader";
 
-export default function AppClientesPage() {
-  const tenant = getDemoTenant();
-  const crmOn = isModuleEnabledForTenant(tenant.entitlements, "crm");
+export default async function AppClientesPage() {
+  const { source, entitlements } = await loadTenantContextForApp();
+  const crmOn = isModuleEnabledForTenant(entitlements, "crm");
 
   return (
     <>
+      <PersistenceSourceBadge source={source} />
       <PageTitle title="CRM" description="Contactos del tenant (ficticios). Distinto de clientes en TiendaPro Control." />
       {!crmOn && (
         <p className="mb-4 rounded-lg border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">

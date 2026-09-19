@@ -1,20 +1,21 @@
 import { PageTitle } from "@/components/platform/PageTitle";
-import { getDemoTenant } from "@/lib/tenant/context";
+import { PersistenceSourceBadge } from "@/components/platform/PersistenceSourceBadge";
 import { getPlan } from "@/lib/plans/catalog";
-import { resolveEntitlements } from "@/lib/plans/resolve-modules";
+import { loadResolvedModulesForApp } from "@/lib/platform/tenant-loader";
 
-export default function AppConfigPage() {
-  const tenant = getDemoTenant();
-  const plan = getPlan(tenant.entitlements.planId);
-  const { active } = resolveEntitlements(tenant.entitlements);
+export default async function AppConfigPage() {
+  const { source, entitlements, resolved } = await loadResolvedModulesForApp();
+  const plan = getPlan(entitlements.planId);
 
   return (
     <>
+      <PersistenceSourceBadge source={source} />
       <PageTitle title="Configuración tenant" description="Personalización por cliente (demo)." />
       <div className="space-y-3 rounded-xl border border-border bg-surface p-6 text-sm text-text-secondary">
-        <p>Plan: {plan.name} (referencia, no precio comercial definitivo)</p>
-        <p>Módulos activos: {active.join(", ")}</p>
-        <p>Dominio custom: {tenant.config.customDomain ?? "pendiente"}</p>
+        <p>Plan: {plan.name} (modelo configurable, no tarifa publicada)</p>
+        <p>Módulos activos: {resolved.active.join(", ") || "ninguno"}</p>
+        <p>Fuente datos: {source}</p>
+        <p>Dominio custom: pendiente de configuración tras migración</p>
       </div>
     </>
   );
