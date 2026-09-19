@@ -32,7 +32,7 @@ En **Authentication → URL Configuration** del proyecto `dnptsudsxrcamtxfiszh`,
    - `preview-alpha-v2@tiendapro.local` → tenant `tenant-alpha-test` (membresía admin)
    - `preview-beta-v2@tiendapro.local` → tenant `tenant-beta-test` (membresía admin)
    - `preview-control-v2@tiendapro.local` → operador Control (`owner`)
-   Los usuarios legacy `*-test@tiendapro.local` (SQL RLS) siguen en BD; **no usar para login** hasta limpieza posterior.
+   Los usuarios legacy `*-test@tiendapro.local` (SQL RLS) **fueron eliminados** del proyecto TiendaPro el 2026-09-19; ver `docs/auth-legacy-cleanup.md`. Usar solo cuentas **v2** en Preview.
 4. Validar `/control` (operador) o `/app` (membresía activa) y acceso denegado para cuentas sin rol.
 5. Con `TIENDAPRO_PLATFORM_DB=1` ya en Preview, repetir smoke test tras cada cambio de env.
 
