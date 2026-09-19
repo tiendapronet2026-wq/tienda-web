@@ -1,13 +1,32 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { AuthField, AuthForm } from "@/components/auth/AuthForm";
-import { updatePassword } from "@/app/actions/auth";
 import { createClient } from "@/lib/supabase/client";
 
+async function updatePasswordClient(formData: FormData) {
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) {
+    return { error: "La contraseña debe tener al menos 8 caracteres." };
+  }
+
+  const supabase = createClient();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) {
+    if (error.message.includes("Password should be at least")) {
+      return { error: "La contraseña debe tener al menos 8 caracteres." };
+    }
+    return { error: error.message };
+  }
+  return { success: "ok" };
+}
+
 export function UpdatePasswordForm() {
+  const router = useRouter();
   const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [, startTransition] = useTransition();
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +51,7 @@ export function UpdatePasswordForm() {
             return;
           }
           window.history.replaceState(null, "", window.location.pathname);
+          router.refresh();
         }
       }
 
@@ -53,7 +73,15 @@ export function UpdatePasswordForm() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [router]);
+
+  const handleAction = async (formData: FormData) => {
+    const result = await updatePasswordClient(formData);
+    if (result.error) return result;
+    startTransition(() => {
+      router.push("/mi-cuenta?mensaje=password-actualizado");
+    });
+  };
 
   if (error) {
     return (
@@ -77,7 +105,7 @@ export function UpdatePasswordForm() {
     <AuthForm
       title="Nueva contraseña"
       subtitle="Elegí una contraseña segura de al menos 8 caracteres"
-      action={updatePassword}
+      action={handleAction}
       submitLabel="Actualizar contraseña"
     >
       <AuthField
