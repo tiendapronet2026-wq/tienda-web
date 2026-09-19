@@ -31,6 +31,5 @@ create table if not exists auth.users (
   raw_user_meta_data jsonb not null default '{}'::jsonb
 );
 
-grant select, insert, update, delete on all tables in schema public to authenticated;
-grant select on all tables in schema public to anon;
+-- Permisos de tablas los define la migración baseline (sin grants amplios aquí)
 grant authenticated to postgres;

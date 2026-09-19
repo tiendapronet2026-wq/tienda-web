@@ -5,16 +5,19 @@
 \set user_alpha '11111111-1111-1111-1111-111111111111'
 \set user_beta '22222222-2222-2222-2222-222222222222'
 \set user_owner '33333333-3333-3333-3333-333333333333'
+\set user_viewer '44444444-4444-4444-4444-444444444444'
 
 insert into auth.users (id, raw_user_meta_data) values
   (:'user_alpha'::uuid, '{"first_name":"Alpha"}'),
   (:'user_beta'::uuid, '{"first_name":"Beta"}'),
-  (:'user_owner'::uuid, '{"first_name":"Owner"}')
+  (:'user_owner'::uuid, '{"first_name":"Owner"}'),
+  (:'user_viewer'::uuid, '{"first_name":"Viewer"}')
 on conflict (id) do nothing;
 
-insert into public.control_operators (user_id, role)
-values (:'user_owner'::uuid, 'owner')
-on conflict (user_id) do nothing;
+insert into public.control_operators (user_id, role) values
+  (:'user_owner'::uuid, 'owner'),
+  (:'user_viewer'::uuid, 'viewer')
+on conflict (user_id) do update set role = excluded.role;
 
 do $$
 declare
@@ -128,6 +131,72 @@ begin
   if (select first_name from public.profiles where id = '11111111-1111-1111-1111-111111111111'::uuid) <> 'AlphaUpdated' then
     raise exception 'FAIL self update of first_name should succeed';
   end if;
+end $$;
+
+-- 5) Operador Control viewer no puede elevar role en profiles ajenos
+do $$
+declare
+  role_before text;
+  role_after text;
+begin
+  select role into role_before from public.profiles
+    where id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+  perform test_set_auth('44444444-4444-4444-4444-444444444444'::uuid);
+  update public.profiles
+    set role = 'admin'
+    where id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+  reset role;
+  select role into role_after from public.profiles
+    where id = '11111111-1111-1111-1111-111111111111'::uuid;
+
+  if role_after is distinct from role_before or role_after = 'admin' then
+    raise exception 'FAIL control viewer must not change profile role (before %, after %)', role_before, role_after;
+  end if;
+
+  perform test_set_auth('44444444-4444-4444-4444-444444444444'::uuid);
+  begin
+    update public.profiles set role = 'admin' where id = '44444444-4444-4444-4444-444444444444'::uuid;
+  exception
+    when others then null;
+  end;
+  reset role;
+  if (select role from public.profiles where id = '44444444-4444-4444-4444-444444444444'::uuid) <> 'customer' then
+    raise exception 'FAIL control viewer must not escalate own profile role';
+  end if;
+end $$;
+
+-- 6) Tabla futura sin grant explícito: anon no tiene SELECT
+do $$
+declare
+  can_anon_select boolean;
+begin
+  create table if not exists public.future_probe (
+    id uuid primary key default gen_random_uuid(),
+    note text not null default 'probe'
+  );
+  alter table public.future_probe enable row level security;
+
+  select has_table_privilege('anon', 'public.future_probe', 'SELECT') into can_anon_select;
+
+  if can_anon_select then
+    raise exception 'FAIL anon must not have SELECT on future table by default';
+  end if;
+
+  begin
+    execute 'set role anon';
+    perform 1 from public.future_probe limit 1;
+    raise exception 'FAIL anon should not read future_probe';
+  exception
+    when insufficient_privilege then null;
+    when others then
+      if sqlerrm not like '%permission denied%' then
+        raise;
+      end if;
+  end;
+
+  reset role;
 end $$;
 
 reset role;

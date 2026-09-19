@@ -10,9 +10,9 @@ create extension if not exists "pgcrypto";
 create schema if not exists public;
 grant usage on schema public to postgres, anon, authenticated, service_role;
 grant all on schema public to postgres, service_role;
-alter default privileges in schema public grant all on tables to postgres, service_role;
-alter default privileges in schema public grant select, insert, update, delete on tables to authenticated;
-alter default privileges in schema public grant select on tables to anon;
+-- Sin default privileges amplios para tablas futuras (permisos explícitos más abajo)
+alter default privileges in schema public revoke all on tables from anon, authenticated;
+alter default privileges for role postgres in schema public revoke all on tables from anon, authenticated;
 
 -- ---------------------------------------------------------------------------
 -- Perfiles (Auth)
@@ -170,7 +170,7 @@ $$;
 create or replace function public.profiles_prevent_privilege_self_escalation()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
-  if auth.uid() = old.id and not public.is_control_operator() then
+  if auth.uid() = old.id and not public.is_control_owner() then
     if new.role is distinct from old.role
        or new.status is distinct from old.status
        or new.id is distinct from old.id
@@ -204,7 +204,7 @@ create policy "profiles_self" on public.profiles for select to authenticated
 
 drop policy if exists "profiles_self_update" on public.profiles;
 create policy "profiles_self_update" on public.profiles for update to authenticated
-  using (id = auth.uid() and not public.is_control_operator())
+  using (id = auth.uid() and not public.is_control_owner())
   with check (
     id = auth.uid()
     and role is not distinct from (select p.role from public.profiles p where p.id = auth.uid())
@@ -213,8 +213,8 @@ create policy "profiles_self_update" on public.profiles for update to authentica
 
 drop policy if exists "profiles_control_update" on public.profiles;
 create policy "profiles_control_update" on public.profiles for update to authenticated
-  using (public.is_control_operator())
-  with check (public.is_control_operator());
+  using (public.is_control_owner())
+  with check (public.is_control_owner());
 
 drop policy if exists "module_catalog_read" on public.module_catalog;
 create policy "module_catalog_read" on public.module_catalog for select to authenticated using (true);
@@ -287,6 +287,27 @@ drop policy if exists "audit_insert" on public.platform_audit_log;
 create policy "audit_insert" on public.platform_audit_log for insert to authenticated with check (
   public.is_control_operator() or (tenant_id is not null and public.has_tenant_membership(tenant_id, array['owner','admin','operator']))
 );
+
+-- Permisos mínimos explícitos por tabla (RLS aplica sobre estos grants)
+revoke all on all tables in schema public from anon, authenticated, public;
+
+grant select, update on public.profiles to authenticated;
+grant select on public.module_catalog to authenticated;
+grant insert, update, delete on public.module_catalog to authenticated;
+grant select on public.commercial_plans to authenticated;
+grant insert, update, delete on public.commercial_plans to authenticated;
+grant select on public.tenants to authenticated;
+grant insert, update, delete on public.tenants to authenticated;
+grant select on public.control_operators to authenticated;
+grant insert, update, delete on public.control_operators to authenticated;
+grant select on public.tenant_memberships to authenticated;
+grant insert, update, delete on public.tenant_memberships to authenticated;
+grant select on public.tenant_module_activations to authenticated;
+grant insert, update, delete on public.tenant_module_activations to authenticated;
+grant select, insert, update, delete on public.platform_projects to authenticated;
+grant select, insert on public.platform_audit_log to authenticated;
+
+grant all on all tables in schema public to service_role;
 
 -- Seeds maestros (idempotentes)
 insert into public.module_catalog (module_id, name, migration_namespace) values
