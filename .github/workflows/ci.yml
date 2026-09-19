@@ -1,14 +1,14 @@
 name: CI
 
+# Único workflow de validación: lint + build. Vercel despliega por separado (no lo cancela este concurrency).
 on:
   push:
     branches: [master]
   pull_request:
     branches: [master]
 
-# Cancela runs obsoletos en la misma rama (no afecta despliegues Vercel)
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
+  group: ci-validate-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

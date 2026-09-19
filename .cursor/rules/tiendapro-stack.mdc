@@ -1,5 +1,5 @@
 ---
-description: Convenciones Next.js, Supabase y admin TiendaPro
+description: Stack Next/Supabase TiendaPro — transitorio hacia plataforma modular
 globs:
   - src/**
   - supabase/**
@@ -8,9 +8,8 @@ alwaysApply: false
 
 # Stack TiendaPro
 
-- Next.js App Router; Server Actions en `src/app/actions/` y `src/app/admin/actions/`.
-- Supabase: `createClient()` en servidor para usuario; `createAdminClient()` solo servidor y operaciones acotadas.
-- Migraciones en `supabase/migrations/`; no saltarse RLS. Tipos en `src/types/database.ts`.
-- Admin en `src/app/admin/`; cost engine en `src/lib/cost-engine.ts`.
-- UI: mobile-first, legible, pocos clics; reutilizar `src/components/ui/` y patrones existentes.
-- Ver sección **B** de `AGENTS.md` para detalle de producto y seguridad.
+- Next.js App Router; Supabase server-side; RLS en migraciones versionadas.
+- Código actual (admin, catálogo, cotizaciones, cost engine) es **legado transitorio** — reemplazable en reconstrucción.
+- Nuevos módulos: público (servicios/showroom), privado (clientes/proyectos), operaciones agentes, núcleo multi-proyecto.
+- `createAdminClient()` solo servidor. Tipos BD: `src/types/database.ts` cuando haya acceso Supabase verificado.
+- UI: mobile-first, premium, simple — sección diseño en `AGENTS.md`.

@@ -1,13 +1,14 @@
 ---
-description: Reglas nucleus TiendaPro — repo único, autonomía, sin credenciales ajenas
+description: Reglas nucleus TiendaPro — repo único, visión plataforma, modelos, autonomía
 alwaysApply: true
 ---
 
 # TiendaPro — núcleo
 
-- Repositorio autorizado: **tiendapronet2026-wq/tienda-web** (rama `master`). No cambiar de repo en la misma tarea.
-- Instrucciones completas en **`AGENTS.md`** (secciones A, B, C). Cumplirlas en todo cambio.
-- Supabase TiendaPro en código: ref **`lwenyboejvwuopsenrwx`**. No usar proyecto **`casa-leon-prod`** ni credenciales de otros negocios.
-- Autonomía en tareas rutinarias; autorización explícita para irreversibles, costos nuevos y datos reales de producción.
-- Soluciones simples, tipadas, sin dependencias extra ni simulación de tests/builds.
-- Al cerrar entregas, generar informe con la plantilla al final de `AGENTS.md`.
+- Repo autorizado: **tiendapronet2026-wq/tienda-web** (`master`). Fuente de verdad: **`AGENTS.md`**.
+- Visión: web comercial + showroom + gestión privada clientes/proyectos + coordinación agentes/informes + base multi-proyecto. Legacy catálogo/carrito/cotizaciones **no condiciona** arquitectura nueva.
+- Supabase TiendaPro (código): **`lwenyboejvwuopsenrwx`**. **Sin SQL remoto** hasta acceso verificado. **Nunca** Casa León / `casa-leon-prod`.
+- Vercel: proyecto **`tienda-web`** (equipo `tiendapronet2026-wqs-projects`). Verificar deployment **completed**, no solo URL.
+- **Modelos:** Composer **2.5** por defecto; otros solo si el usuario lo pide expresamente; no cambiar modelo de runs Cloud ya activos; la UI de Cursor manda.
+- Autonomía rutinaria; autorización para irreversibles, producción no pedida y SQL remoto.
+- Informe al cerrar entregas (plantilla en `AGENTS.md`).

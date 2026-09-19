@@ -1,0 +1,10 @@
+---
+description: Política de modelos Cursor para TiendaPro (Composer 2.5 por defecto)
+alwaysApply: false
+---
+
+# Modelos
+
+- Preferir **Composer 2.5** salvo petición expresa del usuario de otro modelo.
+- No reconfigurar ni cambiar el modelo de **agentes Cloud ya en ejecución**.
+- La selección real la define la configuración de Cursor (usuario/equipo/run); estas reglas son orientación.
