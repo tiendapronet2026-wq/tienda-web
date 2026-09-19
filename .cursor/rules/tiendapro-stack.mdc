@@ -1,0 +1,16 @@
+---
+description: Convenciones Next.js, Supabase y admin TiendaPro
+globs:
+  - src/**
+  - supabase/**
+alwaysApply: false
+---
+
+# Stack TiendaPro
+
+- Next.js App Router; Server Actions en `src/app/actions/` y `src/app/admin/actions/`.
+- Supabase: `createClient()` en servidor para usuario; `createAdminClient()` solo servidor y operaciones acotadas.
+- Migraciones en `supabase/migrations/`; no saltarse RLS. Tipos en `src/types/database.ts`.
+- Admin en `src/app/admin/`; cost engine en `src/lib/cost-engine.ts`.
+- UI: mobile-first, legible, pocos clics; reutilizar `src/components/ui/` y patrones existentes.
+- Ver sección **B** de `AGENTS.md` para detalle de producto y seguridad.

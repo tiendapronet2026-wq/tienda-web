@@ -1,0 +1,13 @@
+---
+description: Reglas nucleus TiendaPro — repo único, autonomía, sin credenciales ajenas
+alwaysApply: true
+---
+
+# TiendaPro — núcleo
+
+- Repositorio autorizado: **tiendapronet2026-wq/tienda-web** (rama `master`). No cambiar de repo en la misma tarea.
+- Instrucciones completas en **`AGENTS.md`** (secciones A, B, C). Cumplirlas en todo cambio.
+- Supabase TiendaPro en código: ref **`lwenyboejvwuopsenrwx`**. No usar proyecto **`casa-leon-prod`** ni credenciales de otros negocios.
+- Autonomía en tareas rutinarias; autorización explícita para irreversibles, costos nuevos y datos reales de producción.
+- Soluciones simples, tipadas, sin dependencias extra ni simulación de tests/builds.
+- Al cerrar entregas, generar informe con la plantilla al final de `AGENTS.md`.
