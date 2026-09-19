@@ -28,9 +28,13 @@ En **Authentication → URL Configuration** del proyecto `dnptsudsxrcamtxfiszh`,
 
 1. Configurar las cuatro variables de la primera tabla en Vercel → Settings → Environment Variables → **Preview only**.
 2. Desplegar rama del PR #1 y abrir `/login` (sin ciclo `/control`).
-3. Iniciar sesión con usuario de prueba `@tiendapro.local` (operador o miembro tenant).
+3. Iniciar sesión con usuarios **v2** (Auth oficial, login verificado por API):
+   - `preview-alpha-v2@tiendapro.local` → tenant `tenant-alpha-test` (membresía admin)
+   - `preview-beta-v2@tiendapro.local` → tenant `tenant-beta-test` (membresía admin)
+   - `preview-control-v2@tiendapro.local` → operador Control (`owner`)
+   Los usuarios legacy `*-test@tiendapro.local` (SQL RLS) siguen en BD; **no usar para login** hasta limpieza posterior.
 4. Validar `/control` (operador) o `/app` (membresía activa) y acceso denegado para cuentas sin rol.
-5. Recién entonces setear `TIENDAPRO_PLATFORM_DB=1` en Preview y repetir smoke test.
+5. Con `TIENDAPRO_PLATFORM_DB=1` ya en Preview, repetir smoke test tras cada cambio de env.
 
 ## Producción
 
