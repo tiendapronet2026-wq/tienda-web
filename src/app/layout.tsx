@@ -1,10 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import { headers } from "next/headers";
-import { HeaderNav } from "@/components/Header";
-import { BetaBanner } from "@/components/BetaBanner";
-import { SiteFooter } from "@/components/SiteFooter";
-import { getCartCount } from "@/app/actions/cart";
+import { PublicHeader } from "@/components/platform/PublicHeader";
+import { PublicFooter } from "@/components/platform/PublicFooter";
 import "./globals.css";
 
 const plusJakarta = Plus_Jakarta_Sans({
@@ -18,11 +16,11 @@ const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://www.tiendapro.net";
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
   title: {
-    default: "TiendaPro | Productos y soluciones personalizadas",
+    default: "TiendaPro | Plataforma comercial y operaciones",
     template: "%s | TiendaPro",
   },
   description:
-    "Convertimos tus ideas en productos reales. Impresiones, impresión 3D, grabado láser, corte de polifan y un catálogo de productos para cada proyecto.",
+    "TiendaPro 3.0: servicios digitales, showroom de demos y centro de operaciones multiproyecto.",
   applicationName: "TiendaPro",
   manifest: "/site.webmanifest",
   icons: {
@@ -38,17 +36,9 @@ export const metadata: Metadata = {
     locale: "es_AR",
     url: siteUrl,
     siteName: "TiendaPro",
-    title: "TiendaPro | Productos y soluciones personalizadas",
-    description:
-      "Convertimos tus ideas en productos reales. Impresiones, impresión 3D, grabado láser, corte de polifan y un catálogo de productos para cada proyecto.",
+    title: "TiendaPro | Plataforma comercial y operaciones",
+    description: "Servicios digitales, demos interactivas y panel de operaciones.",
     images: [{ url: "/brand/og-tiendapro.png", width: 1200, height: 630, alt: "TiendaPro" }],
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "TiendaPro | Productos y soluciones personalizadas",
-    description:
-      "Convertimos tus ideas en productos reales. Impresiones, impresión 3D, grabado láser, corte de polifan y un catálogo de productos para cada proyecto.",
-    images: ["/brand/og-tiendapro.png"],
   },
 };
 
@@ -58,17 +48,18 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = (await headers()).get("x-pathname") ?? "";
-  const isAdminRoute = pathname.startsWith("/admin");
-  const cartCount = isAdminRoute ? 0 : await getCartCount();
+  const isPanel = pathname.startsWith("/panel");
+  const isLegacyAdmin = pathname.startsWith("/admin");
+
+  const showPublicChrome = !isPanel && !isLegacyAdmin;
 
   return (
     <html lang="es">
       <body className={`${plusJakarta.variable} antialiased`}>
         <div className="min-h-screen bg-background text-foreground">
-          {!isAdminRoute && <BetaBanner />}
-          {!isAdminRoute && <HeaderNav cartCount={cartCount} />}
+          {showPublicChrome && <PublicHeader />}
           <main>{children}</main>
-          {!isAdminRoute && <SiteFooter />}
+          {showPublicChrome && <PublicFooter />}
         </div>
       </body>
     </html>
