@@ -6,14 +6,13 @@ const links = [
   { href: "/", label: "Inicio" },
   { href: "/servicios", label: "Servicios" },
   { href: "/modulos", label: "Módulos" },
-  { href: "/demos", label: "Demos" },
-  { href: "/panel", label: "Panel" },
+  { href: "/demos", label: "Showroom" },
 ];
 
 export function PublicHeader() {
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-surface/90 backdrop-blur-md">
-      <div className="tp-container flex h-[var(--header-h)] items-center justify-between gap-4">
+      <div className="tp-container flex h-[var(--header-h)] items-center justify-between gap-3">
         <BrandLogo variant="light" priority />
         <nav className="hidden items-center gap-1 md:flex">
           {links.map((link) => (
@@ -26,12 +25,12 @@ export function PublicHeader() {
             </Link>
           ))}
         </nav>
-        <div className="flex items-center gap-2">
-          <ButtonLink href="/demos" size="sm" variant="outline" className="hidden sm:inline-flex">
-            Showroom
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <ButtonLink href="/control" size="sm" variant="outline" className="hidden sm:inline-flex">
+            Control (demo)
           </ButtonLink>
-          <ButtonLink href="/panel" size="sm">
-            Centro operaciones
+          <ButtonLink href="/app" size="sm" variant="secondary">
+            App cliente (demo)
           </ButtonLink>
         </div>
       </div>

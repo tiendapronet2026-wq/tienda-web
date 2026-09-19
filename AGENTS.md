@@ -111,8 +111,10 @@ Variables (nombres): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 ### Stack actual (transitorio hacia la visión)
 
 - **Next.js 15** (App Router), **React 19**, **Tailwind CSS 4**, **Supabase** (cuando haya acceso verificado).
-- Código legacy en `src/app/admin`, catálogo antiguo: no expandir; redirecciones hacia `/panel` y rutas 3.0.
-- Código nuevo: `src/lib/core`, `src/lib/modules`, `src/lib/plans`, `src/lib/tenant`, UI en `/modulos`, `/demos`, `/panel`.
+- **TiendaPro Control** (`/control/*`): propietario — tenants, solicitudes, agentes, despliegues.
+- **App cliente SaaS** (`/app/*`): módulos y datos del tenant; nunca mezclar con Control.
+- Código legacy admin: redirecciones a `/control` o `/app`.
+- Código modular: `src/lib/core`, `modules`, `plans`, `tenant`; UI `/modulos`, `/demos`, `/control`, `/app`.
 
 ### Arquitectura objetivo (orientación)
 
@@ -170,4 +172,4 @@ No incluir secretos, tokens ni datos personales de clientes.
 
 - **2026-09-19**: Creación inicial `AGENTS.md`, `.cursor/rules/`, CI mínimo (PR #1).
 - **2026-09-19**: Visión definitiva plataforma, política de modelos, registro Vercel verificado, aclaración legacy vs reconstrucción.
-- **2026-09-19**: Arquitectura modular SaaS — core, modules, plans, tenant; catálogo `/modulos`; informe `docs/architecture-modular.md`.
+- **2026-09-19**: Consolidación Control vs App SaaS; dependencias módulo/integración; tests Vitest; paneles demo identificados.

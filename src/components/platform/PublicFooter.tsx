@@ -2,8 +2,10 @@ import Link from "next/link";
 
 const footerLinks = [
   { href: "/servicios", label: "Servicios" },
-  { href: "/demos", label: "Demos interactivas" },
-  { href: "/panel", label: "Panel (demo)" },
+  { href: "/modulos", label: "Módulos" },
+  { href: "/demos", label: "Showroom" },
+  { href: "/control", label: "Control (demo)" },
+  { href: "/app", label: "App cliente (demo)" },
 ];
 
 export function PublicFooter() {
@@ -13,8 +15,7 @@ export function PublicFooter() {
         <div>
           <p className="text-lg font-bold text-foreground">TiendaPro</p>
           <p className="mt-2 text-sm leading-relaxed text-text-secondary">
-            Plataforma comercial y centro de operaciones multiproyecto. Demos con datos ficticios hasta conectar
-            producción.
+            Plataforma SaaS modular. Showroom y paneles demo claramente identificados; sin datos de producción.
           </p>
         </div>
         <div>
@@ -39,7 +40,7 @@ export function PublicFooter() {
         </div>
       </div>
       <div className="border-t border-border py-4 text-center text-xs text-muted">
-        © {new Date().getFullYear()} TiendaPro · TiendaPro 3.0 en reconstrucción
+        © {new Date().getFullYear()} TiendaPro · TiendaPro 3.0
       </div>
     </footer>
   );

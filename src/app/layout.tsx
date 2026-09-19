@@ -48,18 +48,19 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const pathname = (await headers()).get("x-pathname") ?? "";
-  const isPanel = pathname.startsWith("/panel");
-  const isLegacyAdmin = pathname.startsWith("/admin");
-
-  const showPublicChrome = !isPanel && !isLegacyAdmin;
+  const hidePublicChrome =
+    pathname.startsWith("/control") ||
+    pathname.startsWith("/app") ||
+    pathname.startsWith("/panel") ||
+    pathname.startsWith("/admin");
 
   return (
     <html lang="es">
       <body className={`${plusJakarta.variable} antialiased`}>
         <div className="min-h-screen bg-background text-foreground">
-          {showPublicChrome && <PublicHeader />}
+          {hidePublicChrome ? null : <PublicHeader />}
           <main>{children}</main>
-          {showPublicChrome && <PublicFooter />}
+          {hidePublicChrome ? null : <PublicFooter />}
         </div>
       </body>
     </html>

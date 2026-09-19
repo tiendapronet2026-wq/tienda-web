@@ -23,7 +23,7 @@ export default function HomePage() {
               Plataforma comercial y centro de operaciones multiproyecto
             </h1>
             <p className="mt-5 max-w-xl text-base leading-relaxed text-white/75 sm:text-lg">
-              Web pública premium, showroom de demos interactivas y panel privado para clientes, proyectos y agentes —
+              Web pública premium, showroom de demos y vistas demo de Control y App cliente —
               con datos ficticios hasta conectar producción.
             </p>
             <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -86,9 +86,12 @@ export default function HomePage() {
             <ButtonLink href="/demos" size="lg">
               Ir a /demos
             </ButtonLink>
-            <ButtonLink href="/panel" size="lg" variant="outline">
-              Panel demo
-            </ButtonLink>
+              <ButtonLink href="/control" size="lg" variant="outline">
+                Control (demo)
+              </ButtonLink>
+              <ButtonLink href="/app" size="lg" variant="secondary">
+                App cliente (demo)
+              </ButtonLink>
           </div>
         </div>
       </section>

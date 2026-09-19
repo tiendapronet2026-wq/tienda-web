@@ -15,7 +15,7 @@ export default function ModulosPage() {
       <SectionHeader
         eyebrow="Plataforma SaaS"
         title="Catálogo de módulos independientes"
-        description="Monolito modular: núcleo común + módulos activables por plan. Los precios son referencia comercial; no hay suscripciones automáticas en esta fase."
+        description="Monolito modular: núcleo común + módulos activables por plan. Cifras de ejemplo para diseño comercial — no son tarifas publicadas ni cotización vinculante."
       />
       <MockBadge className="mb-8" />
 
@@ -32,8 +32,11 @@ export default function ModulosPage() {
       </section>
 
       <section>
-        <h2 className="text-xl font-bold text-foreground">Planes comerciales (referencia)</h2>
-        <p className="mt-2 text-sm text-text-secondary">Un plan define módulos incluidos; add-ons y cambios de plan son configurables.</p>
+        <h2 className="text-xl font-bold text-foreground">Planes (modelo configurable)</h2>
+        <p className="mt-2 text-sm text-text-secondary">
+          Precio base + módulos adicionales + reglas de dependencia. Sin cobros automáticos. Importes ilustrativos
+          únicamente.
+        </p>
         <div className="mt-6 grid gap-5 lg:grid-cols-3">
           {(["starter", "growth", "enterprise"] as const).map((id) => {
             const plan = COMMERCIAL_PLANS[id];
@@ -42,7 +45,7 @@ export default function ModulosPage() {
                 <p className="text-xs font-semibold uppercase tracking-wide text-brand">{plan.name}</p>
                 <p className="mt-2 text-2xl font-bold text-foreground">
                   ${plan.baseMonthlyPrice.toLocaleString("es-AR")}
-                  <span className="text-sm font-normal text-muted"> /mes ref.</span>
+                  <span className="text-sm font-normal text-muted"> /mes (ejemplo)</span>
                 </p>
                 <p className="mt-2 text-sm text-text-secondary">{plan.description}</p>
                 <ul className="mt-4 space-y-1 text-sm text-foreground">

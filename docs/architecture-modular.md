@@ -1,100 +1,82 @@
-# TiendaPro — Informe de arquitectura modular (SaaS)
+# TiendaPro — Arquitectura modular consolidada
 
-> Estado: **fase scaffold + demos ficticias** · sin integraciones reales · sin SQL remoto · PR #1  
-> Prioridad: esta directriz **prevalece** sobre decisiones monolíticas anteriores.
+> **Estado real (PR #1):** monolito modular Next.js · datos demo · sin SQL remoto · sin merge producción  
+> **Supabase esperado:** `lwenyboejvwuopsenrwx` · no Casa León
 
-## 1. Objetivo
+## 1. Dos capas de producto
 
-Construir TiendaPro como plataforma **SaaS modular, escalable y comercializable** para múltiples clientes, evitando un monolito funcional donde todo depende de todo.
+| Capa | Ruta | Audiencia | Contenido |
+|------|------|-----------|-----------|
+| **TiendaPro Control** | `/control/*` | Propietario TiendaPro | Tenants, solicitudes, proyectos, agentes, informes, versiones, despliegues |
+| **TiendaPro SaaS (App cliente)** | `/app/*` | Usuario de cada tenant | Módulos contratados, CRM, informes, asistente |
+| **Showroom público** | `/`, `/servicios`, `/modulos`, `/demos` | Público | Comercial + catálogo + demos ficticias |
 
-## 2. Enfoque de despliegue
+**Regla:** Control ≠ App cliente. `/panel` redirige a Control o rutas nuevas (compat).
 
-| Aspecto | Decisión |
-|---------|----------|
-| Estilo | Monolito modular (Next.js App Router) |
-| Microservicios | No en esta fase |
-| Multicliente | `tenantId` + entitlements; RLS Supabase pendiente de conexión verificada |
-| Despliegue | `shared` (default) o `dedicated` por tenant — sin auto-aprovisionamiento |
-| Dominios custom | Campos preparados; sin automatización DNS/BD aún |
+Demos públicas llevan banner: **no son paneles privados autenticados**.
 
-## 3. Núcleo común (`src/lib/core/`)
+## 2. Núcleo y módulos (código)
 
-| Capacidad | Estado código |
-|-----------|----------------|
-| Organizaciones / tenants | Tipos + contratos |
-| Usuarios y roles | Tipos `RoleId`, `Permission` |
-| Proyectos | Tipo `Project` |
-| Planes comerciales | Ver `src/lib/plans/` |
-| Catálogo de módulos | Ver `src/lib/modules/registry.ts` |
-| Activaciones | `resolveActiveModules`, `isModuleEnabledForTenant` |
-| Configuración tenant | `TenantConfig` en `src/lib/tenant/context.ts` |
-| Auditoría | Tipo `AuditEntryCore`; persistencia futura |
-| Integración | `DomainEvent`, `CoreServicesContract` |
+- `src/lib/core/` — orgs, usuarios, roles, proyectos, auditoría, eventos.
+- `src/lib/modules/registry.ts` — catálogo módulos + `requiredRules` + `optionalIntegrations`.
+- `src/lib/plans/resolve-modules.ts` — activación efectiva, integraciones, suspensión.
+- `src/lib/tenant/` — entitlements demo + `assertModuleAccess`.
+- `src/lib/auth/claims.ts` — realms `control` | `tenant-app` (preparación persistencia).
 
-## 4. Módulos de producto
+## 3. Dependencias corregidas
 
-| ID | Dependencias | Madurez | Demo / panel |
-|----|--------------|---------|--------------|
-| `venta-online` | — | demo | `/demos/tienda` |
-| `stock` | — | scaffold | — |
-| `pos` | stock | demo | `/demos/pos` |
-| `crm` | — | scaffold | `/panel/clientes` |
-| `chatbot` | — | demo | `/demos/chatbot`, `/panel/agentes` |
-| `delivery` | venta-online | scaffold | — |
-| `finanzas` | venta-online, pos | scaffold | — |
-| `reportes` | — | demo | `/demos/dashboard`, `/panel/informes` |
+| Módulo | Activación | Integraciones opcionales |
+|--------|------------|---------------------------|
+| POS | **Independiente** | Stock → sync tickets |
+| Venta online | Independiente | Stock → descuenta pedidos |
+| Finanzas | Requiere **POS o venta online** (any) | Stock → valuación |
+| Delivery | Requiere venta online activa | — |
+| Stock | Independiente | — |
 
-Cada módulo declara: `migrationNamespace`, permisos, contratos parciales en `src/lib/modules/contracts.ts`.
+- **Contratado ≠ activo:** se evalúa fixpoint sobre reglas duras.
+- **Suspendido:** datos conservados; integraciones que dependen del partner se **deshabilitan** sin apagar el módulo host (ej. POS activo, sync stock off).
 
-**Ejemplo de integración:** venta online / POS publican eventos; **stock** procesa movimientos solo si está **activo** para el tenant (lógica en capa de aplicación; bus de eventos tipado en core).
+Pruebas: `npm test` → `src/lib/plans/resolve-modules.test.ts` (Vitest).
 
-## 5. Planes comerciales (`src/lib/plans/catalog.ts`)
+## 4. Planes comerciales
 
-- **Starter**, **Growth**, **Enterprise**, **Custom** (referencia).
-- Precios mensuales **ficticios** (ARS); **no** hay cobros ni suscripciones automáticas.
-- Operaciones soportadas en modelo: incluir módulos, add-ons, suspender sin borrar, cambiar plan.
+- `src/lib/plans/catalog.ts` — base + add-ons + módulos incluidos.
+- Importes en UI = **ejemplos**, no tarifas definitivas ni cobro real.
+- Operaciones modeladas: add-on, suspensión, cambio de plan, config por tenant.
 
-Tenant demo: `tenant_demo_horizonte` — plan Growth + add-on chatbot, delivery suspendido.
+## 5. Showroom
 
-## 6. Multicliente y seguridad
+Etiquetas por módulo (`showcaseStatus`): **Demo** · **Funcional** · **Próximamente**.
 
-- Aislamiento lógico por `tenantId` en tipos y resolución de módulos.
-- `assertModuleAccess` en `src/lib/tenant/access.ts` — patrón para checks servidor.
-- **RLS:** diseñar políticas por `tenant_id` cuando se apliquen migraciones remotas; **no ejecutadas** en esta entrega.
-- Prohibido usar Supabase Casa León.
+Demos en `/demos/*` — solo datos ficticios; sin producción.
 
-## 7. Capa de presentación (entrega actual)
+## 6. Agentes
 
-| Superficie | Ruta | Notas |
-|------------|------|-------|
-| Web comercial | `/`, `/servicios` | Servicios de negocio TiendaPro |
-| Catálogo modular | `/modulos` | Módulos + planes referencia |
-| Showroom | `/demos/*` | Datos ficticios explícitos |
-| Panel | `/panel/*` | Resumen, módulos, CRM mock, agentes, informes, config |
+- Pipeline existente: interpretación → validación → reglas → herramientas → auditoría.
+- `src/lib/agents/operations-contract.ts` — informes/tareas entrantes; **sin ejecución arbitraria**; aprobación futura.
 
-## 8. Centro de agentes
+## 7. Supabase (diseño, no ejecutado)
 
-- `src/lib/agents/` — pipeline interpretación → validación → reglas → herramientas → auditoría.
-- Chatbot es **módulo**; sin WhatsApp/Instagram/APIs externas.
+Migraciones futuras (por namespace de módulo):
 
-## 9. Qué no está implementado (honesto)
+1. **Núcleo:** `tenants`, `tenant_users`, `roles`, `tenant_modules` (estado + config JSON), `plans`, `audit_log` — columna `tenant_id` en todas las tablas de negocio.
+2. **RLS:** políticas `tenant_id = auth.jwt()->>'tenant_id'` (o membership table); rol Control en realm separado / service role acotado.
+3. **Auth:** Supabase Auth + claims custom; validar en servidor antes de cualquier query real.
 
-- Persistencia Supabase del núcleo y módulos.
-- Cobros, facturación real, suscripciones.
-- Aprovisionamiento dominios/BD dedicadas.
-- Implementaciones completas de stock, delivery, finanzas (solo contratos/scaffold).
-- Auto-despliegue por cliente.
+**No ejecutar SQL remoto** hasta verificar MCP/proyecto TiendaPro.
 
-## 10. Próximos pasos (post-autorización)
+## 8. Despliegue
 
-1. Conectar MCP Supabase proyecto TiendaPro (`lwenyboejvwuopsenrwx`).
-2. Migraciones versionadas: tablas núcleo (`tenants`, `tenant_modules`, `plans`, …) con RLS.
-3. Auth real enlazada a tenant + roles.
-4. Implementar bus de eventos en servidor y primer módulo productivo (p. ej. venta-online).
-5. Merge PR #1 cuando el equipo autorice preview/producción.
+- Shared (default) vs dedicated — campo en `TenantConfig`.
+- Dominios custom preparados; sin auto-aprovisionamiento.
+- Vercel: `tiendapronet2026-wqs-projects/tienda-web` — previews automáticos en PR.
 
-## 11. Referencias en repo
+## 9. Rutas validadas
 
-- `AGENTS.md` — reglas persistentes actualizadas.
-- `.cursor/rules/tiendapro-modular.mdc` — reglas Cursor scoped.
-- Código: `src/lib/{core,modules,plans,tenant}/`.
+- Navegación pública → Control/App demo → Showroom.
+- Responsive vía layout existente + `tp-container`.
+- Legacy → redirects en `middleware.ts`.
+
+## 10. Próximo paso único
+
+**Conectar Supabase TiendaPro verificado → migración núcleo + RLS + auth real → reemplazar mocks en `/app` por datos tenant-scoped.**
