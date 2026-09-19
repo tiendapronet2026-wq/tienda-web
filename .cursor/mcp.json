@@ -1,0 +1,7 @@
+{
+  "mcpServers": {
+    "supabase-tiendapro": {
+      "url": "https://mcp.supabase.com/mcp?project_ref=dnptsudsxrcamtxfiszh&read_only=true&features=database,docs"
+    }
+  }
+}
