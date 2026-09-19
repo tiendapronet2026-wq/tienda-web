@@ -24,18 +24,22 @@ En **Authentication → URL Configuration** del proyecto `dnptsudsxrcamtxfiszh`,
 - Site URL (o usar `NEXT_PUBLIC_SITE_URL` coherente)
 - Redirect URLs: `{NEXT_PUBLIC_SITE_URL}/login`, `{NEXT_PUBLIC_SITE_URL}/actualizar-password`, etc.
 
-### Redirect URLs Preview (aplicadas 2026-09-19 vía `supabase config push`)
+### Redirect URLs Preview (Supabase Auth allow list)
 
-**Site URL remota:** sin cambios en este paso (`http://localhost:3000` en proyecto; producción Vercel no tocada).
+**Site URL (proyecto Supabase):** permanece `http://localhost:3000`. La alineación con **`https://www.tiendapro.net`** para producción queda **pendiente de autorización específica** — no modificar hasta entonces.
 
-**Additional redirect URLs añadidas:**
+**Allow list activa (Preview `tienda-web` + alias de rama):**
 
 - `https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/login`
 - `https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/actualizar-password`
 - `https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/**`
-- `https://*-tiendapronet2026-wqs-projects.vercel.app/**`
+- `https://tienda-*-tiendapronet2026-wqs-projects.vercel.app/login`
+- `https://tienda-*-tiendapronet2026-wqs-projects.vercel.app/actualizar-password`
+- `https://tienda-*-tiendapronet2026-wqs-projects.vercel.app/**`
 
-Réplica en repo: `supabase/config.toml` → `[auth].additional_redirect_urls`.
+**Retirado:** `https://*-tiendapronet2026-wqs-projects.vercel.app/**` (comodín de todo el equipo Vercel).
+
+Aplicación: `supabase config push` (solo `auth.additional_redirect_urls`). Réplica: `supabase/config.toml`.
 
 ## Checklist Preview
 
