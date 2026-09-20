@@ -1,74 +1,85 @@
 #!/usr/bin/env node
 /**
- * Verifica migraciones pendientes del instalador en dnptsudsxrcamtxfiszh (solo lectura vía API).
+ * Verificador confiable — proyecto exclusivo dnptsudsxrcamtxfiszh.
  */
 import { createClient } from "@supabase/supabase-js";
-import { readFileSync } from "node:fs";
-import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+
+const MANUAL =
+  "En Supabase Dashboard → SQL Editor del proyecto dnptsudsxrcamtxfiszh, ejecutá de una sola vez el archivo scripts/manual-apply-pending-migrations-dnptsudsxrcamtxfiszh.sql y volvé a correr: node scripts/verify-pending-installer-migrations.mjs";
+
+function evaluateInstallerSchemaHealth(health) {
+  const expectedVersions = ["20260920213000", "20260920220000", "20260920230000", "20260920232000"];
+  const mig = health?.migration_versions ?? {};
+  const missingMigrations = expectedVersions.filter((v) => !mig[v]);
+
+  const checks = [
+    { id: "project_ref", ok: health?.project_ref === "dnptsudsxrcamtxfiszh" },
+    {
+      id: "migration_history",
+      ok: missingMigrations.length === 0,
+      detail: missingMigrations.length ? `Faltan: ${missingMigrations.join(", ")}` : undefined,
+    },
+    { id: "branding_reference", ok: health?.branding_reference_ok === true },
+    { id: "grants_table", ok: health?.table_installation_resource_grants_exists === true },
+    { id: "resource_tier_column", ok: health?.column_resource_tier_exists === true },
+    {
+      id: "lifecycle_preview_validated",
+      ok: health?.lifecycle_includes_preview_validated === true,
+      detail: health?.lifecycle_constraint,
+    },
+    {
+      id: "sql_grants_insert_update",
+      ok: health?.grants_has_insert_update === true,
+      detail: JSON.stringify(health?.grants_authenticated_privileges ?? []),
+    },
+    {
+      id: "rls_insert_update_policies",
+      ok: health?.policies_include_insert_update === true,
+      detail: JSON.stringify(health?.policies_installation_resource_grants ?? []),
+    },
+    {
+      id: "control_functions",
+      ok: health?.is_control_owner_defined === true && health?.is_control_operator_defined === true,
+    },
+  ];
+
+  return { ok: checks.every((c) => c.ok), checks };
+}
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const __dirname = dirname(fileURLToPath(import.meta.url));
-
-const checks = [];
 
 if (!url || !key) {
   console.error("Faltan NEXT_PUBLIC_SUPABASE_URL o SUPABASE_SERVICE_ROLE_KEY.");
-  console.log("Operación manual: scripts/manual-apply-pending-migrations-dnptsudsxrcamtxfiszh.sql");
+  console.error(MANUAL);
   process.exit(2);
 }
 
 if (!url.includes("dnptsudsxrcamtxfiszh")) {
-  console.error("Este script solo debe apuntar al proyecto TiendaPro dnptsudsxrcamtxfiszh.");
+  console.error("URL debe ser del proyecto dnptsudsxrcamtxfiszh exclusivamente.");
   process.exit(2);
 }
 
 const supabase = createClient(url, key, { auth: { persistSession: false } });
 
-const { data: brandingRow, error: bErr } = await supabase
-  .from("platform_installations")
-  .select("branding_config")
-  .eq("company_slug", "tiendapro-reference")
-  .maybeSingle();
+const { data: health, error } = await supabase.rpc("control_installer_schema_health");
 
-if (bErr) {
-  console.error(bErr.message);
-  process.exit(2);
+if (error) {
+  console.error("RPC control_installer_schema_health no disponible:", error.message);
+  console.error(MANUAL);
+  process.exit(1);
 }
 
-const cfg = brandingRow?.branding_config ?? {};
-const brandingOk =
-  cfg.brandName === "TiendaPro" && cfg.primaryColor === "#0a8f5c" && Boolean(cfg.logoUrl);
-checks.push({ id: "20260920213000_reference_branding_runtime", ok: brandingOk });
+const result = evaluateInstallerSchemaHealth(health);
 
-const { error: grantsErr } = await supabase.from("installation_resource_grants").select("id").limit(1);
-const grantsOk = !grantsErr;
-checks.push({
-  id: "20260920220000_installation_resource_grants",
-  ok: grantsOk,
-  detail: grantsErr?.message,
-});
-
-let lifecycleOk = false;
-if (grantsOk) {
-  const { error: tierErr } = await supabase.from("installation_resource_grants").select("resource_tier").limit(1);
-  lifecycleOk = !tierErr;
-}
-checks.push({
-  id: "20260920230000_installation_preview_validated",
-  ok: lifecycleOk,
-  detail: lifecycleOk ? undefined : "Columna resource_tier o lifecycle preview_validated pendiente",
-});
-
-for (const c of checks) {
-  console.log(`${c.ok ? "OK" : "PENDIENTE"} — ${c.id}${c.detail ? ` (${c.detail})` : ""}`);
+for (const c of result.checks) {
+  console.log(`${c.ok ? "OK" : "FALLO"} — ${c.id}${c.detail ? ` (${c.detail})` : ""}`);
 }
 
-if (checks.every((c) => c.ok)) {
-  console.log("\nMigraciones instalador verificadas en dnptsudsxrcamtxfiszh.");
+if (result.ok) {
+  console.log("\nEsquema instalador + historial de migraciones: CONSISTENTE (dnptsudsxrcamtxfiszh).");
   process.exit(0);
 }
 
-console.log("\nAplicación manual (propietario): scripts/manual-apply-pending-migrations-dnptsudsxrcamtxfiszh.sql");
+console.error("\n", MANUAL);
 process.exit(1);

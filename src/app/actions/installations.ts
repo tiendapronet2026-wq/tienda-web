@@ -9,11 +9,11 @@ import { buildManifestFromWizardPayload, slugifyCompanyName } from "@/lib/instal
 import { runInstallationPipeline } from "@/lib/installer/run";
 import { classifyInstallationOutcome } from "@/lib/installer/outcome";
 import {
-  detectResourceTier,
   loadActiveInstallationGrant,
   loadLastCompletedInstallSteps,
   manifestMatchesGrant,
 } from "@/lib/installer/grants";
+import { buildResourceGrantUpsertRow, validateResourceGrantInput } from "@/lib/installer/grant-form";
 
 function parsePayload(formData: FormData): Record<string, unknown> {
   const raw = formData.get("payload");
@@ -286,38 +286,31 @@ export async function createInstallationResourceGrant(formData: FormData) {
     return { ok: false, error: "Instalación inválida o de referencia" };
   }
 
-  const deployBranch =
-    String(formData.get("deploy_branch") ?? "").trim() || `install/${inst.company_slug}`;
-
   const githubRepo = String(formData.get("github_repo") ?? "").trim();
   const vercelProject = String(formData.get("vercel_project") ?? "").trim();
   const supabaseRef = String(formData.get("supabase_ref") ?? "").trim();
 
-  if (!githubRepo.includes("/") || !vercelProject || !supabaseRef) {
-    return { ok: false, error: "Completá GitHub org/repo, proyecto Vercel y Supabase ref del cliente" };
+  const validationErrors = validateResourceGrantInput({
+    installationId,
+    companySlug: inst.company_slug,
+    githubRepo,
+    vercelProject,
+    supabaseProjectRef: supabaseRef,
+    primaryDomain: String(formData.get("primary_domain") ?? "").trim() || null,
+  });
+  if (validationErrors.length) {
+    return { ok: false, error: validationErrors.join(" ") };
   }
 
-  const resourceTier = detectResourceTier(githubRepo, vercelProject, supabaseRef);
-
-  const grant = {
-    installation_id: installationId,
-    environment: "preview",
-    github_repo: githubRepo,
-    vercel_project: vercelProject,
-    supabase_project_ref: supabaseRef,
-    primary_domain: String(formData.get("primary_domain") ?? "").trim() || null,
-    deploy_branch: deployBranch,
-    resource_tier: resourceTier,
-    scopes: [
-      "verify",
-      "env_write",
-      "deploy_preview",
-      "migrations_verify",
-      "smoke",
-      ...(resourceTier === "client_owned" ? (["domain_verify"] as const) : []),
-    ],
-    active: true,
-  };
+  const grant = buildResourceGrantUpsertRow({
+    installationId,
+    companySlug: inst.company_slug,
+    githubRepo,
+    vercelProject,
+    supabaseProjectRef: supabaseRef,
+    primaryDomain: String(formData.get("primary_domain") ?? "").trim() || null,
+    deployBranch: String(formData.get("deploy_branch") ?? "").trim() || undefined,
+  });
 
   const { error } = await admin.from("installation_resource_grants").upsert(grant, {
     onConflict: "installation_id,environment",
@@ -330,15 +323,21 @@ export async function createInstallationResourceGrant(formData: FormData) {
     operation_type: "install.authorize_grant",
     status: "succeeded",
     summary:
-      resourceTier === "platform_test"
+      grant.resource_tier === "platform_test"
         ? "Grant de prueba técnica (infra TiendaPro) — no live independiente"
         : "Grant de recursos propios del cliente",
-    metadata: { deployBranch, resourceTier, githubRepo, vercelProject, supabaseRef },
+    metadata: {
+      deployBranch: grant.deploy_branch,
+      resourceTier: grant.resource_tier,
+      githubRepo: grant.github_repo,
+      vercelProject: grant.vercel_project,
+      supabaseRef: grant.supabase_project_ref,
+    },
     actor_user_id: user.id,
   });
 
   revalidatePath(`/control/instalaciones/${installationId}`);
-  return { ok: true, deployBranch, resourceTier };
+  return { ok: true, deployBranch: grant.deploy_branch, resourceTier: grant.resource_tier };
 }
 
 export async function runExistingResourcesInstallation(formData: FormData) {
