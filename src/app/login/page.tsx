@@ -28,6 +28,11 @@ export default async function LoginPage({
           Registro exitoso. Revisá tu email si se requiere confirmación e iniciá sesión.
         </p>
       )}
+      {mensaje === "password-actualizado" && (
+        <p className="rounded-lg bg-success-soft px-3 py-2 text-sm text-success">
+          Contraseña actualizada. Ya podés iniciar sesión.
+        </p>
+      )}
       {error === "suspendido" && (
         <p className="rounded-lg bg-error-soft px-3 py-2 text-sm text-error">
           Tu cuenta está suspendida. Contactá al soporte.

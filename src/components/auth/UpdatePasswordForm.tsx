@@ -79,7 +79,7 @@ export function UpdatePasswordForm() {
     const result = await updatePasswordClient(formData);
     if (result.error) return result;
     startTransition(() => {
-      router.push("/mi-cuenta?mensaje=password-actualizado");
+      router.push("/login?mensaje=password-actualizado");
     });
   };
 
