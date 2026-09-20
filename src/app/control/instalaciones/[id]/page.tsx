@@ -43,7 +43,7 @@ export default async function InstalacionDetallePage({
       <InstallationRunControls
         installationId={installation.id}
         companySlug={installation.companySlug}
-        canRun={!installation.isReference && installation.lifecycleStatus !== "live"}
+        canRun={!installation.isReference && !["live", "archived"].includes(installation.lifecycleStatus)}
       />
 
       <dl className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

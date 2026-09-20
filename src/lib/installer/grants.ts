@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { TIENDAPRO_AUTHORIZED_LINK_TARGETS } from "@/lib/installer/providers/authorized";
 
 export type InstallationResourceGrant = {
   id: string;
@@ -10,6 +11,7 @@ export type InstallationResourceGrant = {
   primaryDomain: string | null;
   deployBranch: string;
   scopes: string[];
+  resourceTier: "platform_test" | "client_owned";
 };
 
 export type GrantRow = {
@@ -22,6 +24,7 @@ export type GrantRow = {
   primary_domain: string | null;
   deploy_branch: string;
   scopes: string[];
+  resource_tier?: string;
 };
 
 function mapGrant(row: GrantRow): InstallationResourceGrant {
@@ -35,6 +38,9 @@ function mapGrant(row: GrantRow): InstallationResourceGrant {
     primaryDomain: row.primary_domain,
     deployBranch: row.deploy_branch,
     scopes: row.scopes ?? [],
+    resourceTier: (row.resource_tier === "platform_test" ? "platform_test" : "client_owned") as
+      | "platform_test"
+      | "client_owned",
   };
 }
 
@@ -46,7 +52,7 @@ export async function loadActiveInstallationGrant(
   const { data } = await admin
     .from("installation_resource_grants")
     .select(
-      "id, installation_id, environment, github_repo, vercel_project, supabase_project_ref, primary_domain, deploy_branch, scopes"
+      "id, installation_id, environment, github_repo, vercel_project, supabase_project_ref, primary_domain, deploy_branch, scopes, resource_tier"
     )
     .eq("installation_id", installationId)
     .eq("environment", environment)
@@ -92,4 +98,36 @@ export function manifestMatchesGrant(
 
 export function grantHasScope(grant: InstallationResourceGrant, scope: string): boolean {
   return grant.scopes.includes(scope);
+}
+
+export function detectResourceTier(
+  githubRepo: string,
+  vercelProject: string,
+  supabaseProjectRef: string
+): "platform_test" | "client_owned" {
+  const g = TIENDAPRO_AUTHORIZED_LINK_TARGETS;
+  if (
+    githubRepo.toLowerCase() === g.githubRepo.toLowerCase() &&
+    vercelProject.toLowerCase() === g.vercelProject.toLowerCase() &&
+    supabaseProjectRef.toLowerCase() === g.supabaseProjectRef.toLowerCase()
+  ) {
+    return "platform_test";
+  }
+  return "client_owned";
+}
+
+export async function loadLastCompletedInstallSteps(installationId: string): Promise<Set<string>> {
+  const admin = createAdminClient();
+  const { data } = await admin
+    .from("installation_operations")
+    .select("metadata")
+    .eq("installation_id", installationId)
+    .eq("operation_type", "install.real")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const steps = (data?.metadata as { steps?: Array<{ step: string; status: string }> } | undefined)?.steps;
+  if (!steps?.length) return new Set();
+  return new Set(steps.filter((s) => s.status === "ok").map((s) => s.step));
 }

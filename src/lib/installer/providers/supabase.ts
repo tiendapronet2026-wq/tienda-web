@@ -1,8 +1,9 @@
 import type { InstallationResourceGrant } from "@/lib/installer/grants";
-import { assertAuthorizedTarget } from "@/lib/installer/providers/authorized";
+import { assertAuthorizedTarget, TIENDAPRO_AUTHORIZED_LINK_TARGETS } from "@/lib/installer/providers/authorized";
 import type { ProviderVerifyResult } from "@/lib/installer/providers/types";
 
-const REQUIRED_MIGRATION_VERSIONS = ["20260920180000", "20260920213000"] as const;
+const PLATFORM_MIGRATION_VERSIONS = ["20260920180000", "20260920213000"] as const;
+const CLIENT_STORE_MIGRATION_VERSIONS = ["20260920120000", "20260920133000", "20260920140000"] as const;
 
 function supabaseMgmtToken(): string | null {
   return process.env.INSTALLER_SUPABASE_ACCESS_TOKEN?.trim() || null;
@@ -70,7 +71,10 @@ export async function verifySupabaseMigrationsPresent(
 
   const rows = (await res.json()) as Array<{ name?: string; version?: string }>;
   const versions = new Set(rows.map((r) => String(r.version ?? "")));
-  const missing = REQUIRED_MIGRATION_VERSIONS.filter((v) => !versions.has(v));
+
+  const isPlatformProject = projectRef === TIENDAPRO_AUTHORIZED_LINK_TARGETS.supabaseProjectRef;
+  const required = isPlatformProject ? PLATFORM_MIGRATION_VERSIONS : CLIENT_STORE_MIGRATION_VERSIONS;
+  const missing = required.filter((v) => !versions.has(v));
 
   if (missing.length) {
     return {
@@ -80,5 +84,11 @@ export async function verifySupabaseMigrationsPresent(
     };
   }
 
-  return { ok: true, status: "ok", message: "Migraciones de plataforma/tienda verificadas en proyecto" };
+  return {
+    ok: true,
+    status: "ok",
+    message: isPlatformProject
+      ? "Migraciones plataforma/tienda verificadas"
+      : "Migraciones tienda (schema cliente) verificadas",
+  };
 }

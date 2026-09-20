@@ -3,7 +3,8 @@ import type { InstallationLifecycleStatus, ProviderLinkStatus } from "@/lib/plat
 const lifecycleLabels: Record<InstallationLifecycleStatus, string> = {
   draft: "Borrador",
   provisioning: "Aprovisionando",
-  live: "En producción",
+  preview_validated: "Preview validada (prueba)",
+  live: "Independiente en producción",
   paused: "Pausada",
   failed: "Error",
   archived: "Archivada",
@@ -12,6 +13,7 @@ const lifecycleLabels: Record<InstallationLifecycleStatus, string> = {
 const lifecycleClass: Record<InstallationLifecycleStatus, string> = {
   draft: "bg-surface-muted text-muted",
   provisioning: "bg-brand-soft text-brand",
+  preview_validated: "bg-warning-soft text-warning",
   live: "bg-success-soft text-success",
   paused: "bg-warning-soft text-warning",
   failed: "bg-error-soft text-error",
