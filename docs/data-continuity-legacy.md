@@ -23,4 +23,9 @@ Producción operó contra el ref legacy hasta el cambio de env; **no fue posible
 
 ## Acción humana imprescindible (única)
 
-En [Supabase Dashboard](https://supabase.com/dashboard), con la **cuenta propietaria del proyecto `lwenyboejvwuopsenrwx`**: transferir el proyecto a la org **tiendapronet2026-wq** *o* generar un **backup SQL / export Auth** y entregarlo al operador TiendaPro para ejecutar el script de importación **sin** sobrescribir pedidos creados en la base nueva.
+En [Supabase Dashboard](https://supabase.com/dashboard), con la **cuenta propietaria del proyecto `lwenyboejvwuopsenrwx`**:
+
+1. **Project Settings → Team** (preferido): invitar a la cuenta de la org TiendaPro (`tiendapronet2026-wq`) como **Developer** o **Administrator** — **sin transferir ownership**.
+2. **Alternativa:** export **Database backup** + **Auth users** y ejecutar `scripts/import-legacy-store-data.mjs --dry-run` antes de importar.
+
+Sin invitación o export, no es posible conciliar usuarios/pedidos históricos.

@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getCartItems } from "@/app/actions/cart";
+import { isCheckoutEnabled } from "@/lib/checkout/flags";
 import { CartQuantityControl } from "@/components/CartQuantityControl";
 import { ProductImage } from "@/components/ProductImage";
 import { ButtonLink } from "@/components/ui/Button";
@@ -8,6 +9,7 @@ import { formatPrice } from "@/lib/utils";
 
 export default async function CartPage() {
   const items = await getCartItems();
+  const checkoutEnabled = isCheckoutEnabled();
   const total = items.reduce(
     (sum, item) => sum + (item.products?.price ?? 0) * item.quantity,
     0
@@ -81,18 +83,31 @@ export default async function CartPage() {
               </div>
             </dl>
 
-            <button
-              type="button"
-              disabled
-              aria-disabled="true"
-              title="Las compras online estarán disponibles próximamente"
-              className="mt-6 flex h-12 w-full cursor-not-allowed items-center justify-center rounded-[var(--radius-lg)] bg-surface-muted text-sm font-semibold text-muted"
-            >
-              Finalizar compra (próximamente)
-            </button>
-            <p className="mt-3 text-center text-xs leading-relaxed text-muted">
-              Las compras online estarán disponibles próximamente.
-            </p>
+            {checkoutEnabled ? (
+              <>
+                <ButtonLink href="/checkout" fullWidth size="lg">
+                  Continuar al checkout
+                </ButtonLink>
+                <p className="mt-3 text-center text-xs leading-relaxed text-muted">
+                  Pedido registrado sin cobro online automático. Iniciá sesión si te lo solicita.
+                </p>
+              </>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  disabled
+                  aria-disabled="true"
+                  title="Las compras online estarán disponibles próximamente"
+                  className="mt-6 flex h-12 w-full cursor-not-allowed items-center justify-center rounded-[var(--radius-lg)] bg-surface-muted text-sm font-semibold text-muted"
+                >
+                  Finalizar compra (próximamente)
+                </button>
+                <p className="mt-3 text-center text-xs leading-relaxed text-muted">
+                  Las compras online estarán disponibles próximamente.
+                </p>
+              </>
+            )}
             <div className="mt-5">
               <ButtonLink href="/productos" variant="outline" fullWidth>
                 Seguir explorando productos
