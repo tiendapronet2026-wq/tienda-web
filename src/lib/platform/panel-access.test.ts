@@ -41,6 +41,8 @@ describe("panel-access / rutas privadas", () => {
     expect(safeRedirectPath("//evil.com")).toBeNull();
     expect(safeRedirectPath("https://x")).toBeNull();
     expect(safeRedirectPath("/control")).toBe("/control");
+    expect(safeRedirectPath("/checkout")).toBe("/checkout");
+    expect(safeRedirectPath("/productos/foo")).toBe("/productos/foo");
     expect(safeRedirectPath("/demos")).toBeNull();
   });
 });
@@ -118,6 +120,7 @@ describe("panel-access / post-login", () => {
   it("signIn sanitiza destino en modo plataforma", () => {
     expect(sanitizeSignInRedirect("/control", memberOnly, true)).toBe("/acceso-denegado");
     expect(sanitizeSignInRedirect("/app", memberOnly, true)).toBe("/app");
+    expect(sanitizeSignInRedirect("/checkout", nobody, true)).toBe("/checkout");
     expect(sanitizeSignInRedirect("/control", memberOnly, false)).toBe("/control");
   });
 });

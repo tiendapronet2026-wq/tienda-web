@@ -20,6 +20,9 @@ supabase/.temp/
 # misc
 *.log
 .DS_Store
+e2e/.e2e-creds.json
+e2e/.e2e-result.json
+test-results/
 
 # local audit / QA artifacts (never ship)
 .deploy-audit/
