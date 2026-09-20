@@ -30,6 +30,7 @@ describe("password-recovery", () => {
     expect(
       hasImplicitRecoveryTokens("#access_token=a&refresh_token=b&type=recovery")
     ).toBe(true);
+    expect(hasImplicitRecoveryTokens("#access_token=a&refresh_token=b")).toBe(false);
     expect(hasImplicitRecoveryTokens("#foo=bar")).toBe(false);
   });
 
