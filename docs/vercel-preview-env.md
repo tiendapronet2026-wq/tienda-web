@@ -11,11 +11,13 @@ Configuración **solo para entornos Preview** (no Production). No commitear valo
 | `SUPABASE_SERVICE_ROLE_KEY` | Preview | Clave **service_role** (solo server; opcional hasta carrito legacy) |
 | `NEXT_PUBLIC_SITE_URL` | Preview | URL canónica del deployment Preview (auth redirects) |
 
-## Variable diferida (no activar aún)
+## Flag plataforma (Preview)
 
-| Variable | Cuándo |
-|----------|--------|
-| `TIENDAPRO_PLATFORM_DB=1` | **Después** de probar login en Preview con usuarios reales (`control_operators` / `tenant_memberships`). Sin esta flag, `/control` y `/app` usan mocks de desarrollo con sesión Supabase. |
+| Variable | Preview | Production (master) |
+|----------|---------|------------------------|
+| `TIENDAPRO_PLATFORM_DB=1` | **Activa** — `/control` y `/app` usan RLS real | **No configurada** — sin merge de env Prod en PR #1; paneles seguirían en mock hasta autorizar |
+
+Sin `TIENDAPRO_PLATFORM_DB=1` + URL `dnptsudsxrcamtxfiszh`, `/control` y `/app` usan datos mock aunque haya sesión Supabase.
 
 ## Supabase Auth (Dashboard)
 
