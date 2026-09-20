@@ -1,0 +1,2 @@
+-- Aplicar una sola vez en SQL Editor (proyecto dnptsudsxrcamtxfiszh) si la migración aún no está en schema_migrations remoto.
+-- Ver archivo hermano: supabase/migrations/20260921043000_operational_bridge.sql
