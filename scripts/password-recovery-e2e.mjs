@@ -73,7 +73,11 @@ try {
   const page = await browser.newPage();
   await page.goto(linkData.properties.action_link, { waitUntil: "networkidle", timeout: 120_000 });
 
-  await page.waitForURL(/actualizar-password/, { timeout: 120_000 });
+  await page.waitForFunction(
+    () => window.location.pathname.endsWith("/actualizar-password"),
+    undefined,
+    { timeout: 120_000 }
+  );
   await page.getByLabel("Nueva contraseña").waitFor({ timeout: 60_000 });
   await page.getByLabel("Nueva contraseña").fill(newPassword);
   await page.getByRole("button", { name: "Actualizar contraseña" }).click();

@@ -35,7 +35,7 @@ export function hasImplicitRecoveryTokens(hash: string): boolean {
   const access = hashParams.get("access_token");
   const refresh = hashParams.get("refresh_token");
   const type = hashParams.get("type");
-  return Boolean(access && refresh && (type === "recovery" || !type));
+  return Boolean(access && refresh && type === "recovery");
 }
 
 export function sanitizeAuthCallbackNext(nextParam: string | null): string {
