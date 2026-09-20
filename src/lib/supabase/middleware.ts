@@ -10,6 +10,11 @@ import { loadSessionPlatformContext } from "@/lib/platform/session-platform";
 import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
 
 const AUTH_PUBLIC_PATHS = ["/login", "/registro", "/recuperar-password", "/actualizar-password"];
+const AUTH_FLOW_PATHS = ["/auth/callback", ...AUTH_PUBLIC_PATHS];
+
+function isAuthFlowPath(pathname: string): boolean {
+  return AUTH_FLOW_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -89,6 +94,14 @@ export async function updateSession(request: NextRequest) {
       denied.searchParams.set("error", "plataforma");
       return NextResponse.redirect(denied);
     }
+  }
+
+  if (
+    user &&
+    isAuthFlowPath(pathname) &&
+    (pathname === "/actualizar-password" || pathname.startsWith("/actualizar-password/"))
+  ) {
+    return supabaseResponse;
   }
 
   if (user && AUTH_PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
