@@ -6,7 +6,9 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
 import { buildManifestFromWizardPayload, slugifyCompanyName } from "@/lib/installer/manifest";
-import { runInstallationPipeline } from "@/lib/installer/run";
+import { isRealInstallationComplete, runInstallationPipeline } from "@/lib/installer/run";
+import { loadActiveInstallationGrant, manifestMatchesGrant } from "@/lib/installer/grants";
+import { TIENDAPRO_AUTHORIZED_LINK_TARGETS } from "@/lib/installer/providers/authorized";
 
 function parsePayload(formData: FormData): Record<string, unknown> {
   const raw = formData.get("payload");
@@ -138,7 +140,13 @@ export async function verifyProviderConnections(formData: FormData) {
   payload.supabaseSimulated = false;
 
   const manifest = buildManifestFromWizardPayload(payload, { dryRun: false });
-  const result = await runInstallationPipeline(manifest);
+  if (payload.installationId) {
+    manifest.installationId = String(payload.installationId);
+  }
+  const grant = manifest.installationId
+    ? await loadActiveInstallationGrant(manifest.installationId, manifest.installEnvironment)
+    : null;
+  const result = await runInstallationPipeline(manifest, { grant });
   const providerSteps = result.steps.filter((s) => s.step.startsWith("providers."));
 
   const failed = providerSteps.some((s) => s.status === "failed");
@@ -210,7 +218,7 @@ export async function registerSimulatedInstallation(formData: FormData): Promise
         company_slug: manifest.companySlug,
         template_id: manifest.templateId,
         primary_domain: manifest.primaryDomain,
-        lifecycle_status: "provisioning",
+        lifecycle_status: "draft",
         installed_version: "3.0.0",
         enabled_modules: manifest.enabledModules,
         github_meta: { status: "simulated", ...manifest.providers.github },
@@ -245,4 +253,185 @@ export async function registerSimulatedInstallation(formData: FormData): Promise
 
   revalidatePath("/control/instalaciones");
   redirect(`/control/instalaciones/${inst.id}`);
+}
+
+/** Autorización explícita de recursos para una instalación (control owner). */
+export async function createInstallationResourceGrant(formData: FormData) {
+  if (!isTiendaProSupabaseConfigured()) {
+    return { ok: false, error: "Supabase no configurado" };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login?redirect=/control/instalaciones");
+
+  const installationId = String(formData.get("installation_id") ?? "").trim();
+  if (!installationId) return { ok: false, error: "installation_id requerido" };
+
+  const admin = createAdminClient();
+  const { data: inst } = await admin
+    .from("platform_installations")
+    .select("company_slug, is_reference")
+    .eq("id", installationId)
+    .maybeSingle();
+
+  if (!inst || inst.is_reference) {
+    return { ok: false, error: "Instalación inválida o de referencia" };
+  }
+
+  const deployBranch =
+    String(formData.get("deploy_branch") ?? "").trim() || `install/${inst.company_slug}`;
+
+  const grant = {
+    installation_id: installationId,
+    environment: "preview",
+    github_repo: TIENDAPRO_AUTHORIZED_LINK_TARGETS.githubRepo,
+    vercel_project: TIENDAPRO_AUTHORIZED_LINK_TARGETS.vercelProject,
+    supabase_project_ref: TIENDAPRO_AUTHORIZED_LINK_TARGETS.supabaseProjectRef,
+    primary_domain: String(formData.get("primary_domain") ?? "").trim() || null,
+    deploy_branch: deployBranch,
+    scopes: [
+      "verify",
+      "env_write",
+      "deploy_preview",
+      "migrations_verify",
+      "smoke",
+    ],
+    active: true,
+  };
+
+  const { error } = await admin.from("installation_resource_grants").upsert(grant, {
+    onConflict: "installation_id,environment",
+  });
+
+  if (error) return { ok: false, error: error.message };
+
+  await admin.from("installation_operations").insert({
+    installation_id: installationId,
+    operation_type: "install.authorize_grant",
+    status: "succeeded",
+    summary: "Recursos autorizados para instalación preview (infra TiendaPro existente)",
+    metadata: { deployBranch, scopes: grant.scopes },
+    actor_user_id: user.id,
+  });
+
+  revalidatePath(`/control/instalaciones/${installationId}`);
+  return { ok: true, deployBranch };
+}
+
+export async function runExistingResourcesInstallation(formData: FormData) {
+  const payload = parsePayload(formData);
+  const installationId = String(formData.get("installation_id") ?? payload.installationId ?? "").trim();
+  if (!installationId) {
+    return { ok: false, error: "installation_id requerido" };
+  }
+
+  const admin = createAdminClient();
+  if (!payload.companyName) {
+    const { data: row } = await admin
+      .from("platform_installations")
+      .select("company_name, company_slug, template_id, primary_domain, enabled_modules, branding_config")
+      .eq("id", installationId)
+      .maybeSingle();
+    if (row) {
+      payload.companyName = row.company_name;
+      payload.companySlug = row.company_slug;
+      payload.templateId = row.template_id;
+      payload.primaryDomain = row.primary_domain;
+      payload.modules = row.enabled_modules;
+      const branding = (row.branding_config ?? {}) as Record<string, unknown>;
+      Object.assign(payload, branding);
+    }
+  }
+
+  payload.installationId = installationId;
+  payload.runMode = "existing_resources";
+  payload.installEnvironment = "preview";
+  payload.githubRepo = payload.githubRepo ?? TIENDAPRO_AUTHORIZED_LINK_TARGETS.githubRepo;
+  payload.vercelProject = payload.vercelProject ?? TIENDAPRO_AUTHORIZED_LINK_TARGETS.vercelProject;
+  payload.supabaseRef = payload.supabaseRef ?? TIENDAPRO_AUTHORIZED_LINK_TARGETS.supabaseProjectRef;
+  payload.githubConnected = true;
+  payload.vercelConnected = true;
+  payload.supabaseConnected = true;
+  payload.githubSimulated = false;
+  payload.vercelSimulated = false;
+  payload.supabaseSimulated = false;
+
+  const manifest = buildManifestFromWizardPayload(payload, { dryRun: false });
+  manifest.installationId = installationId;
+
+  const grant = await loadActiveInstallationGrant(installationId, manifest.installEnvironment);
+  if (!grant) {
+    return { ok: false, error: "Sin grant activo — autorizá recursos primero" };
+  }
+
+  const mismatch = manifestMatchesGrant(manifest, grant);
+  if (mismatch.length) {
+    return { ok: false, error: mismatch.join(" ") };
+  }
+
+  if (!isTiendaProSupabaseConfigured()) {
+    const result = await runInstallationPipeline(manifest, { grant });
+    return { ok: result.ok, result, mock: true };
+  }
+
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect("/login?redirect=/control/instalaciones");
+
+  await admin.from("installation_operations").insert({
+    installation_id: installationId,
+    operation_type: "install.real",
+    environment: "preview",
+    status: "running",
+    summary: "Instalación con recursos existentes iniciada",
+    metadata: { manifest: { companySlug: manifest.companySlug, templateId: manifest.templateId } },
+    actor_user_id: user.id,
+  });
+
+  const result = await runInstallationPipeline(manifest, { grant });
+  const complete = isRealInstallationComplete(result);
+
+  await admin
+    .from("platform_installations")
+    .update({
+      company_name: manifest.companyName,
+      template_id: manifest.templateId,
+      primary_domain: manifest.primaryDomain,
+      enabled_modules: manifest.enabledModules,
+      branding_config: manifest.branding,
+      github_meta: { status: "connected", ...manifest.providers.github },
+      vercel_meta: {
+        status: complete ? "connected" : "pending",
+        ...manifest.providers.vercel,
+        deployment_url: result.deploymentUrl ?? null,
+        deploy_branch: grant.deployBranch,
+      },
+      supabase_meta: { status: "connected", isolated: true, ...manifest.providers.supabase },
+      lifecycle_status: complete ? "live" : "failed",
+      installed_version: complete ? "3.0.0" : null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", installationId);
+
+  await admin.from("installation_operations").insert({
+    installation_id: installationId,
+    operation_type: "install.real",
+    environment: "preview",
+    status: complete ? "succeeded" : "failed",
+    summary: complete
+      ? "Instalación independiente completada (preview)"
+      : "Instalación incompleta — revisar pasos",
+    metadata: { steps: result.steps, deploymentUrl: result.deploymentUrl },
+    actor_user_id: user.id,
+  });
+
+  revalidatePath("/control/instalaciones");
+  revalidatePath(`/control/instalaciones/${installationId}`);
+
+  return { ok: complete, result, complete };
 }
