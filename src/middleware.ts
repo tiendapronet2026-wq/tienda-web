@@ -1,5 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server";
 import { updateSession } from "@/lib/supabase/middleware";
+import { isAuthorizedTiendaProSupabaseUrl } from "@/lib/platform/supabase-project";
+
+/** Tienda real (catálogo Supabase): no redirigir a showroom demo. */
+function isLiveStoreEnabled(): boolean {
+  return (
+    process.env.TIENDAPRO_PLATFORM_DB === "1" &&
+    isAuthorizedTiendaProSupabaseUrl(process.env.NEXT_PUBLIC_SUPABASE_URL)
+  );
+}
 
 /** Rutas legacy de tienda demo — no incluir /login ni /registro (auth real). */
 const legacyPrefixes = ["/productos", "/carrito", "/cotizacion", "/mi-cuenta"];
@@ -17,12 +26,6 @@ const panelRedirects: Record<string, string> = {
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
-  if (pathname.startsWith("/admin")) {
-    const url = request.nextUrl.clone();
-    url.pathname = pathname.replace(/^\/admin/, "/control") || "/control";
-    return NextResponse.redirect(url);
-  }
-
   if (pathname === "/panel" || pathname === "/panel/") {
     return NextResponse.redirect(new URL("/control", request.url));
   }
@@ -33,6 +36,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  if (!isLiveStoreEnabled()) {
   for (const prefix of legacyPrefixes) {
     if (pathname === prefix || pathname.startsWith(`${prefix}/`)) {
       const url = request.nextUrl.clone();
@@ -45,6 +49,7 @@ export async function middleware(request: NextRequest) {
       }
       return NextResponse.redirect(url);
     }
+  }
   }
 
   return updateSession(request);
