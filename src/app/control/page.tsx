@@ -41,8 +41,8 @@ export default async function ControlHomePage() {
               </li>
             ))}
           </ul>
-          <Link href="/control/clientes" className="mt-3 inline-block text-sm font-semibold text-brand">
-            Ver clientes →
+          <Link href="/control/instalaciones" className="mt-3 inline-block text-sm font-semibold text-brand">
+            Central de instalaciones →
           </Link>
         </section>
         <section>
