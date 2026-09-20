@@ -58,4 +58,14 @@ Aplicación: `supabase config push` (solo `auth.additional_redirect_urls`). Rép
 
 ## Producción
 
-No modificar env de Production en esta fase.
+Variables en Vercel **Production** (2026-09-20):
+
+| Variable | Valor |
+|----------|--------|
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://dnptsudsxrcamtxfiszh.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Clave anon del proyecto TiendaPro |
+| `SUPABASE_SERVICE_ROLE_KEY` | Secret server-only |
+| `NEXT_PUBLIC_SITE_URL` | `https://www.tiendapro.net` |
+| `TIENDAPRO_PLATFORM_DB` | `1` (catálogo + plataforma en mismo proyecto) |
+
+Redirect URLs oficiales en Supabase Auth: ver `supabase/config.toml` (`www.tiendapro.net` + Preview).

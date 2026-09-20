@@ -161,6 +161,12 @@ site_url = "https://www.tiendapro.net"
 # external_url = ""
 # A list of *exact* URLs that auth providers are permitted to redirect to post authentication.
 additional_redirect_urls = [
+  "https://www.tiendapro.net/login",
+  "https://www.tiendapro.net/actualizar-password",
+  "https://www.tiendapro.net/**",
+  "https://tiendapro.net/login",
+  "https://tiendapro.net/actualizar-password",
+  "https://tiendapro.net/**",
   "https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/login",
   "https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/actualizar-password",
   "https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/**",
