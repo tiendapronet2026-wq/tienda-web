@@ -1,0 +1,21 @@
+---
+description: Arquitectura modular SaaS TiendaPro — núcleo, módulos, planes, multicliente
+globs:
+  - src/lib/core/**
+  - src/lib/modules/**
+  - src/lib/plans/**
+  - src/lib/tenant/**
+  - src/app/modulos/**
+  - src/app/panel/**
+alwaysApply: false
+---
+
+# Modular SaaS (prioridad)
+
+- Plataforma **multicliente** comercializable; **monolito modular**, no microservicios prematuros.
+- **Núcleo** `src/lib/core/`: orgs, usuarios, roles, proyectos, auditoría, contratos/eventos.
+- **Módulos** `src/lib/modules/registry.ts`: ids, dependencias, permisos, `migrationNamespace`, contratos en `contracts.ts`.
+- **Planes** `src/lib/plans/`: incluidos, add-ons, suspensión sin borrar datos — **sin cobros reales** aún.
+- **Tenant** `src/lib/tenant/`: entitlements + `assertModuleAccess` / `isModuleEnabledForTenant` en servidor.
+- Ocultar pantalla **no** desactiva módulo. Sin SQL remoto Supabase hasta acceso TiendaPro verificado.
+- Detalle: `docs/architecture-modular.md` y sección B de `AGENTS.md`.

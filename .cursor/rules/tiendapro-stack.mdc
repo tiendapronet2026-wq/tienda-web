@@ -1,0 +1,15 @@
+---
+description: Stack Next/Supabase TiendaPro — transitorio hacia plataforma modular
+globs:
+  - src/**
+  - supabase/**
+alwaysApply: false
+---
+
+# Stack TiendaPro
+
+- Next.js App Router; Supabase server-side; RLS en migraciones versionadas.
+- Código actual (admin, catálogo, cotizaciones, cost engine) es **legado transitorio** — reemplazable en reconstrucción.
+- Nuevos módulos: público (servicios/showroom), privado (clientes/proyectos), operaciones agentes, núcleo multi-proyecto.
+- `createAdminClient()` solo servidor. Tipos BD: `src/types/database.ts` cuando haya acceso Supabase verificado.
+- UI: mobile-first, premium, simple — sección diseño en `AGENTS.md`.

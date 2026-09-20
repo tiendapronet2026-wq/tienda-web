@@ -1,5 +1,15 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import {
+  isAppPanelPath,
+  isControlPanelPath,
+  isPrivatePanelPath,
+  resolvePostLoginRedirect,
+} from "@/lib/platform/panel-access";
+import { loadSessionPlatformContext } from "@/lib/platform/session-platform";
+import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
+
+const AUTH_PUBLIC_PATHS = ["/login", "/registro", "/recuperar-password", "/actualizar-password"];
 
 export async function updateSession(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -10,45 +20,102 @@ export async function updateSession(request: NextRequest) {
     request: { headers: requestHeaders },
   });
 
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() {
-          return request.cookies.getAll();
-        },
-        setAll(cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          supabaseResponse = NextResponse.next({
-            request: { headers: requestHeaders },
-          });
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options)
-          );
-        },
-      },
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const platformDb = isTiendaProSupabaseConfigured();
+
+  if (!url || !key) {
+    if (isPrivatePanelPath(pathname)) {
+      const denied = request.nextUrl.clone();
+      denied.pathname = "/acceso-denegado";
+      return NextResponse.redirect(denied);
     }
-  );
+    return supabaseResponse;
+  }
+
+  const supabase = createServerClient(url, key, {
+    cookies: {
+      getAll() {
+        return request.cookies.getAll();
+      },
+      setAll(cookiesToSet: Array<{ name: string; value: string; options: CookieOptions }>) {
+        cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
+        supabaseResponse = NextResponse.next({
+          request: { headers: requestHeaders },
+        });
+        cookiesToSet.forEach(({ name, value, options }) =>
+          supabaseResponse.cookies.set(name, value, options)
+        );
+      },
+    },
+  });
 
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
-  if (pathname.startsWith("/admin") && !user) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("redirect", pathname);
-    return NextResponse.redirect(url);
+  if (isPrivatePanelPath(pathname) && !user) {
+    const login = request.nextUrl.clone();
+    login.pathname = "/login";
+    login.searchParams.set("redirect", pathname);
+    return NextResponse.redirect(login);
   }
 
-  if (
-    user &&
-    (pathname === "/login" || pathname === "/registro" || pathname === "/recuperar-password")
-  ) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/mi-cuenta";
-    return NextResponse.redirect(url);
+  if (pathname.startsWith("/admin") && !user) {
+    const login = request.nextUrl.clone();
+    login.pathname = "/login";
+    login.searchParams.set("redirect", pathname.replace(/^\/admin/, "/control"));
+    return NextResponse.redirect(login);
+  }
+
+  if (user && platformDb && isPrivatePanelPath(pathname)) {
+    try {
+      const ctx = await loadSessionPlatformContext(supabase, user.id);
+      const controlPath = isControlPanelPath(pathname);
+      const appPath = isAppPanelPath(pathname);
+      const allowed =
+        (controlPath && ctx.controlOperator !== null) ||
+        (appPath && ctx.memberships.some((m) => m.status === "active"));
+
+      if (!allowed) {
+        const denied = request.nextUrl.clone();
+        denied.pathname = "/acceso-denegado";
+        denied.search = "";
+        return NextResponse.redirect(denied);
+      }
+    } catch {
+      const denied = request.nextUrl.clone();
+      denied.pathname = "/acceso-denegado";
+      denied.searchParams.set("error", "plataforma");
+      return NextResponse.redirect(denied);
+    }
+  }
+
+  if (user && AUTH_PUBLIC_PATHS.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
+    try {
+      const ctx = platformDb
+        ? await loadSessionPlatformContext(supabase, user.id)
+        : {
+            userId: user.id,
+            controlOperator: "operator" as const,
+            memberships: [{ tenantId: "demo", role: "admin" as const, status: "active" as const }],
+          };
+
+      const dest = resolvePostLoginRedirect({
+        ctx,
+        redirectParam: request.nextUrl.searchParams.get("redirect"),
+        enforcePlatformAuthorization: platformDb,
+      });
+      const next = request.nextUrl.clone();
+      next.pathname = dest;
+      next.search = "";
+      return NextResponse.redirect(next);
+    } catch {
+      const denied = request.nextUrl.clone();
+      denied.pathname = "/acceso-denegado";
+      denied.searchParams.set("error", "plataforma");
+      return NextResponse.redirect(denied);
+    }
   }
 
   return supabaseResponse;

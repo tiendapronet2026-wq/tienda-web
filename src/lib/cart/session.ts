@@ -41,12 +41,14 @@ export function isValidSessionId(value: string) {
 }
 
 export function getSiteUrl() {
-  const url = process.env.NEXT_PUBLIC_SITE_URL;
-  if (!url) {
-    if (process.env.NODE_ENV === "production") {
-      console.warn("NEXT_PUBLIC_SITE_URL no está configurada en producción.");
-    }
-    return "http://localhost:3000";
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "");
+  if (explicit) return explicit;
+
+  const vercelHost = process.env.VERCEL_URL?.replace(/\/$/, "");
+  if (vercelHost) return `https://${vercelHost}`;
+
+  if (process.env.NODE_ENV === "production") {
+    console.warn("NEXT_PUBLIC_SITE_URL no está configurada en producción.");
   }
-  return url.replace(/\/$/, "");
+  return "http://localhost:3000";
 }

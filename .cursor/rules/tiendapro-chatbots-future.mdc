@@ -1,0 +1,13 @@
+---
+description: Arquitectura futura de chatbots TiendaPro (interpretación, validación, reglas, herramientas, auditoría)
+alwaysApply: false
+---
+
+# Chatbots (futuro)
+
+Aplicar solo cuando la tarea mencione chatbots, asistentes o automatización conversacional.
+
+- No conectar WhatsApp, Instagram ni APIs externas sin autorización explícita.
+- Separar: interpretación (LLM) → validación → motor de reglas → herramientas autorizadas → auditoría.
+- El LLM no ejecuta operaciones ni decide permisos sobre producción.
+- Detalle en sección **C** de `AGENTS.md`.
