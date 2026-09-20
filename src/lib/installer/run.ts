@@ -21,6 +21,11 @@ import {
 } from "@/lib/installer/providers/vercel";
 import { verifySupabaseMigrationsPresent, verifySupabaseProjectAccess } from "@/lib/installer/providers/supabase";
 import { runInstallSmokeTests } from "@/lib/installer/providers/smoke";
+import { TIENDAPRO_AUTHORIZED_LINK_TARGETS } from "@/lib/installer/providers/authorized";
+import {
+  grantUsesPlatformTiendaProStack,
+  isPipelineExecutionComplete,
+} from "@/lib/installer/outcome";
 
 function step(
   stepName: string,
@@ -37,27 +42,69 @@ function provisioningEnabled(): boolean {
 export type InstallPipelineExtras = {
   grant?: InstallationResourceGrant | null;
   deploymentUrl?: string;
+  completedSteps?: Set<string>;
+  /** Solo en memoria durante la acción — no persistir en logs */
+  clientEnv?: { supabaseAnonKey?: string; siteUrl?: string };
 };
 
-const REAL_INSTALL_REQUIRED_STEPS = [
-  "providers.github.permissions",
-  "providers.vercel.permissions",
-  "providers.supabase.permissions",
-  "github.prepare_repo",
-  "supabase.project",
-  "supabase.migrations",
-  "vercel.project",
-  "domain.bind",
-  "deploy",
-  "smoke_tests",
-] as const;
+async function reuseOrRun(
+  stepName: string,
+  completed: Set<string> | undefined,
+  run: () => Promise<InstallStepResult>
+): Promise<InstallStepResult> {
+  if (completed?.has(stepName)) {
+    return step(stepName, "ok", "Paso ya completado (reanudación idempotente)");
+  }
+  return run();
+}
 
+async function securityIsolationStep(
+  manifest: InstallationManifest,
+  grant: InstallationResourceGrant | null
+): Promise<InstallStepResult> {
+  if (manifest.dryRun) {
+    return step("security.isolation", "simulated", "Aislamiento (simulado)");
+  }
+  if (manifest.runMode !== "existing_resources") {
+    return step("security.isolation", "skipped", "No aplica");
+  }
+  if (!grant) {
+    return step("security.isolation", "failed", "Grant requerido");
+  }
+
+  if (grant.resourceTier === "platform_test" || grantUsesPlatformTiendaProStack(grant)) {
+    return step(
+      "security.isolation",
+      "ok",
+      "Prueba técnica en infra TiendaPro — no es tienda independiente del cliente"
+    );
+  }
+
+  const g = TIENDAPRO_AUTHORIZED_LINK_TARGETS;
+  const leaks: string[] = [];
+  if (grant.supabaseProjectRef === g.supabaseProjectRef) {
+    leaks.push("Supabase apunta al proyecto TiendaPro");
+  }
+  if (grant.githubRepo.toLowerCase() === g.githubRepo.toLowerCase()) {
+    leaks.push("GitHub apunta al repo TiendaPro");
+  }
+  if (grant.vercelProject.toLowerCase() === g.vercelProject.toLowerCase()) {
+    leaks.push("Vercel apunta al proyecto TiendaPro");
+  }
+  if (manifest.companySlug === "tiendapro-reference") {
+    leaks.push("Slug reservado de referencia");
+  }
+
+  if (leaks.length) {
+    return step("security.isolation", "failed", leaks.join("; "));
+  }
+
+  return step("security.isolation", "ok", "Recursos propios del cliente — sin mezcla TiendaPro");
+}
+
+/** @deprecated use isPipelineExecutionComplete from outcome */
 export function isRealInstallationComplete(result: InstallRunResult): boolean {
-  if (result.dryRun || result.manifest.runMode !== "existing_resources") return false;
-  return REAL_INSTALL_REQUIRED_STEPS.every((name) => {
-    const s = result.steps.find((x) => x.step === name);
-    return s?.status === "ok";
-  });
+  return isPipelineExecutionComplete(result);
 }
 
 async function resolveGrant(manifest: InstallationManifest): Promise<InstallationResourceGrant | null> {
@@ -201,7 +248,8 @@ async function applyMigrationsStep(
 
 async function configureVercelProjectStep(
   manifest: InstallationManifest,
-  grant: InstallationResourceGrant | null
+  grant: InstallationResourceGrant | null,
+  extras?: InstallPipelineExtras
 ): Promise<InstallStepResult> {
   if (manifest.dryRun) {
     return step("vercel.project", "simulated", `Env Vercel (simulado)`);
@@ -230,12 +278,25 @@ async function configureVercelProjectStep(
   const targets = manifest.installEnvironment === "production" ? (["production"] as const) : (["preview"] as const);
   const brandingJson = brandingConfigToStoreEnvJson(manifest.branding);
 
+  const ref = manifest.providers.supabase.projectRef ?? grant?.supabaseProjectRef;
+  const supabaseUrl = ref ? `https://${ref}.supabase.co` : null;
+
   const envVars: Array<{ key: string; value: string }> = [
     { key: "STORE_INDEPENDENT", value: "1" },
     { key: "STORE_BRANDING_JSON", value: brandingJson },
     { key: "TIENDAPRO_INSTALLATION_SLUG", value: manifest.companySlug },
     { key: "NEXT_PUBLIC_INSTALLATION_SLUG", value: manifest.companySlug },
   ];
+
+  if (supabaseUrl) {
+    envVars.push({ key: "NEXT_PUBLIC_SUPABASE_URL", value: supabaseUrl });
+  }
+  if (extras?.clientEnv?.siteUrl) {
+    envVars.push({ key: "NEXT_PUBLIC_SITE_URL", value: extras.clientEnv.siteUrl });
+  }
+  if (extras?.clientEnv?.supabaseAnonKey) {
+    envVars.push({ key: "NEXT_PUBLIC_SUPABASE_ANON_KEY", value: extras.clientEnv.supabaseAnonKey });
+  }
 
   for (const env of envVars) {
     const r = await upsertVercelEnvVar({
@@ -274,7 +335,9 @@ async function bindDomainStep(
     return step(
       "domain.bind",
       "ok",
-      deploymentUrl ? `Preview: ${deploymentUrl} (sin cambios DNS)` : "Preview sin URL aún"
+      deploymentUrl
+        ? `URL desplegada: ${deploymentUrl} (sin cambios DNS)`
+        : "Deploy preview pendiente de URL"
     );
   }
 
@@ -390,37 +453,37 @@ export async function runInstallationPipeline(
     }
   }
 
-  const providerSteps = await verifyProviderPermissions(manifest, grant);
-  const prepareRepo = await prepareRepositoryFromTemplate(manifest, grant);
-  const supabaseProject = await configureIsolatedSupabase(manifest, grant);
-  const migrations = await applyMigrationsStep(manifest, grant);
-  const vercelProject = await configureVercelProjectStep(manifest, grant);
-  const deployResult = await deployStep(manifest, grant);
-  const deploymentUrl = deployResult.deploymentUrl ?? extras?.deploymentUrl;
-  const domain = await bindDomainStep(manifest, grant, deploymentUrl);
-  const smoke = await smokeStep(manifest, deploymentUrl);
+  const completed = extras?.completedSteps;
 
-  const registerStatus: InstallStepResult["status"] =
-    manifest.dryRun || manifest.runMode !== "existing_resources"
-      ? "simulated"
-      : isRealInstallationComplete({
-          ok: false,
-          dryRun: false,
-          manifest,
-          steps: [
-            step("validate", "ok", ""),
-            ...providerSteps,
-            prepareRepo,
-            supabaseProject,
-            migrations,
-            vercelProject,
-            domain,
-            deployResult,
-            smoke,
-          ],
-        })
-        ? "ok"
-        : "skipped";
+  let deploymentUrl = extras?.deploymentUrl;
+
+  const providerSteps = await verifyProviderPermissions(manifest, grant);
+  const prepareRepo = await reuseOrRun("github.prepare_repo", completed, () =>
+    prepareRepositoryFromTemplate(manifest, grant)
+  );
+  const supabaseProject = await reuseOrRun("supabase.project", completed, () =>
+    configureIsolatedSupabase(manifest, grant)
+  );
+  const migrations = await reuseOrRun("supabase.migrations", completed, () =>
+    applyMigrationsStep(manifest, grant)
+  );
+  const vercelProject = await reuseOrRun("vercel.project", completed, () =>
+    configureVercelProjectStep(manifest, grant, extras)
+  );
+  const isolation = await reuseOrRun("security.isolation", completed, () =>
+    securityIsolationStep(manifest, grant)
+  );
+  const deployResult = await reuseOrRun("deploy", completed, async () => {
+    const r = await deployStep(manifest, grant);
+    if (r.deploymentUrl) {
+      deploymentUrl = r.deploymentUrl;
+    }
+    return r;
+  });
+  const domain = await reuseOrRun("domain.bind", completed, () =>
+    bindDomainStep(manifest, grant, deploymentUrl)
+  );
+  const smoke = await reuseOrRun("smoke_tests", completed, () => smokeStep(manifest, deploymentUrl));
 
   const steps: InstallStepResult[] = [
     step("validate", "ok", "Manifiesto válido"),
@@ -429,22 +492,41 @@ export async function runInstallationPipeline(
     supabaseProject,
     migrations,
     vercelProject,
-    domain,
+    isolation,
     deployResult,
+    domain,
     smoke,
     step(
       "register",
-      registerStatus,
+      manifest.dryRun || manifest.runMode !== "existing_resources"
+        ? "simulated"
+        : isPipelineExecutionComplete({
+            ok: false,
+            dryRun: false,
+            manifest,
+            steps: [
+              step("validate", "ok", ""),
+              ...providerSteps,
+              prepareRepo,
+              supabaseProject,
+              migrations,
+              vercelProject,
+              isolation,
+              deployResult,
+              domain,
+              smoke,
+            ],
+          })
+          ? "ok"
+          : "skipped",
       manifest.dryRun
         ? "Registro en Control (simulado)"
-        : registerStatus === "ok"
-          ? "Listo para registrar live en Control"
-          : "Instalación incompleta — no marcar live"
+        : "Resultado final determinado en Control (preview_validated vs live)"
     ),
   ];
 
   const failed = steps.some((s) => s.status === "failed");
-  const ok = !failed && (manifest.dryRun || isRealInstallationComplete({ ok: !failed, dryRun: manifest.dryRun, manifest, steps }));
+  const ok = !failed && (manifest.dryRun || isPipelineExecutionComplete({ ok: !failed, dryRun: manifest.dryRun, manifest, steps }));
 
   return { ok, dryRun: manifest.dryRun, manifest, steps, deploymentUrl };
 }

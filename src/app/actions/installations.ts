@@ -6,9 +6,14 @@ import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
 import { buildManifestFromWizardPayload, slugifyCompanyName } from "@/lib/installer/manifest";
-import { isRealInstallationComplete, runInstallationPipeline } from "@/lib/installer/run";
-import { loadActiveInstallationGrant, manifestMatchesGrant } from "@/lib/installer/grants";
-import { TIENDAPRO_AUTHORIZED_LINK_TARGETS } from "@/lib/installer/providers/authorized";
+import { runInstallationPipeline } from "@/lib/installer/run";
+import { classifyInstallationOutcome } from "@/lib/installer/outcome";
+import {
+  detectResourceTier,
+  loadActiveInstallationGrant,
+  loadLastCompletedInstallSteps,
+  manifestMatchesGrant,
+} from "@/lib/installer/grants";
 
 function parsePayload(formData: FormData): Record<string, unknown> {
   const raw = formData.get("payload");
@@ -284,20 +289,32 @@ export async function createInstallationResourceGrant(formData: FormData) {
   const deployBranch =
     String(formData.get("deploy_branch") ?? "").trim() || `install/${inst.company_slug}`;
 
+  const githubRepo = String(formData.get("github_repo") ?? "").trim();
+  const vercelProject = String(formData.get("vercel_project") ?? "").trim();
+  const supabaseRef = String(formData.get("supabase_ref") ?? "").trim();
+
+  if (!githubRepo.includes("/") || !vercelProject || !supabaseRef) {
+    return { ok: false, error: "Completá GitHub org/repo, proyecto Vercel y Supabase ref del cliente" };
+  }
+
+  const resourceTier = detectResourceTier(githubRepo, vercelProject, supabaseRef);
+
   const grant = {
     installation_id: installationId,
     environment: "preview",
-    github_repo: TIENDAPRO_AUTHORIZED_LINK_TARGETS.githubRepo,
-    vercel_project: TIENDAPRO_AUTHORIZED_LINK_TARGETS.vercelProject,
-    supabase_project_ref: TIENDAPRO_AUTHORIZED_LINK_TARGETS.supabaseProjectRef,
+    github_repo: githubRepo,
+    vercel_project: vercelProject,
+    supabase_project_ref: supabaseRef,
     primary_domain: String(formData.get("primary_domain") ?? "").trim() || null,
     deploy_branch: deployBranch,
+    resource_tier: resourceTier,
     scopes: [
       "verify",
       "env_write",
       "deploy_preview",
       "migrations_verify",
       "smoke",
+      ...(resourceTier === "client_owned" ? (["domain_verify"] as const) : []),
     ],
     active: true,
   };
@@ -312,13 +329,16 @@ export async function createInstallationResourceGrant(formData: FormData) {
     installation_id: installationId,
     operation_type: "install.authorize_grant",
     status: "succeeded",
-    summary: "Recursos autorizados para instalación preview (infra TiendaPro existente)",
-    metadata: { deployBranch, scopes: grant.scopes },
+    summary:
+      resourceTier === "platform_test"
+        ? "Grant de prueba técnica (infra TiendaPro) — no live independiente"
+        : "Grant de recursos propios del cliente",
+    metadata: { deployBranch, resourceTier, githubRepo, vercelProject, supabaseRef },
     actor_user_id: user.id,
   });
 
   revalidatePath(`/control/instalaciones/${installationId}`);
-  return { ok: true, deployBranch };
+  return { ok: true, deployBranch, resourceTier };
 }
 
 export async function runExistingResourcesInstallation(formData: FormData) {
@@ -332,7 +352,9 @@ export async function runExistingResourcesInstallation(formData: FormData) {
   if (!payload.companyName) {
     const { data: row } = await admin
       .from("platform_installations")
-      .select("company_name, company_slug, template_id, primary_domain, enabled_modules, branding_config")
+      .select(
+        "company_name, company_slug, template_id, primary_domain, enabled_modules, branding_config, vercel_meta"
+      )
       .eq("id", installationId)
       .maybeSingle();
     if (row) {
@@ -349,9 +371,15 @@ export async function runExistingResourcesInstallation(formData: FormData) {
   payload.installationId = installationId;
   payload.runMode = "existing_resources";
   payload.installEnvironment = "preview";
-  payload.githubRepo = payload.githubRepo ?? TIENDAPRO_AUTHORIZED_LINK_TARGETS.githubRepo;
-  payload.vercelProject = payload.vercelProject ?? TIENDAPRO_AUTHORIZED_LINK_TARGETS.vercelProject;
-  payload.supabaseRef = payload.supabaseRef ?? TIENDAPRO_AUTHORIZED_LINK_TARGETS.supabaseProjectRef;
+
+  const grant = await loadActiveInstallationGrant(installationId, "preview");
+  if (!grant) {
+    return { ok: false, error: "Sin grant activo — autorizá recursos del cliente primero" };
+  }
+
+  payload.githubRepo = grant.githubRepo;
+  payload.vercelProject = grant.vercelProject;
+  payload.supabaseRef = grant.supabaseProjectRef;
   payload.githubConnected = true;
   payload.vercelConnected = true;
   payload.supabaseConnected = true;
@@ -362,19 +390,39 @@ export async function runExistingResourcesInstallation(formData: FormData) {
   const manifest = buildManifestFromWizardPayload(payload, { dryRun: false });
   manifest.installationId = installationId;
 
-  const grant = await loadActiveInstallationGrant(installationId, manifest.installEnvironment);
-  if (!grant) {
-    return { ok: false, error: "Sin grant activo — autorizá recursos primero" };
-  }
-
   const mismatch = manifestMatchesGrant(manifest, grant);
   if (mismatch.length) {
     return { ok: false, error: mismatch.join(" ") };
   }
 
+  const resume = String(formData.get("resume") ?? "") === "1";
+  const completedSteps = resume ? await loadLastCompletedInstallSteps(installationId) : new Set<string>();
+
+  const { data: instMeta } = await admin
+    .from("platform_installations")
+    .select("vercel_meta")
+    .eq("id", installationId)
+    .maybeSingle();
+  const previousDeployUrl =
+    typeof (instMeta?.vercel_meta as Record<string, unknown>)?.deployment_url === "string"
+      ? String((instMeta?.vercel_meta as Record<string, unknown>).deployment_url)
+      : undefined;
+
+  const supabaseAnonKey = String(formData.get("client_supabase_anon_key") ?? "").trim();
+  const siteUrl = String(formData.get("client_site_url") ?? "").trim();
+
   if (!isTiendaProSupabaseConfigured()) {
-    const result = await runInstallationPipeline(manifest, { grant });
-    return { ok: result.ok, result, mock: true };
+    const result = await runInstallationPipeline(manifest, {
+      grant,
+      completedSteps,
+      deploymentUrl: previousDeployUrl,
+      clientEnv: {
+        supabaseAnonKey: supabaseAnonKey || undefined,
+        siteUrl: siteUrl || undefined,
+      },
+    });
+    const outcome = classifyInstallationOutcome(result, grant);
+    return { ok: outcome.pipelineComplete, result, outcome, mock: true };
   }
 
   const supabase = await createClient();
@@ -393,8 +441,16 @@ export async function runExistingResourcesInstallation(formData: FormData) {
     actor_user_id: user.id,
   });
 
-  const result = await runInstallationPipeline(manifest, { grant });
-  const complete = isRealInstallationComplete(result);
+  const result = await runInstallationPipeline(manifest, {
+    grant,
+    completedSteps,
+    deploymentUrl: previousDeployUrl,
+    clientEnv: {
+      supabaseAnonKey: supabaseAnonKey || undefined,
+      siteUrl: siteUrl || undefined,
+    },
+  });
+  const outcome = classifyInstallationOutcome(result, grant);
 
   await admin
     .from("platform_installations")
@@ -404,16 +460,20 @@ export async function runExistingResourcesInstallation(formData: FormData) {
       primary_domain: manifest.primaryDomain,
       enabled_modules: manifest.enabledModules,
       branding_config: manifest.branding,
-      github_meta: { status: "connected", ...manifest.providers.github },
+      github_meta: { status: "connected", repo: grant.githubRepo },
       vercel_meta: {
-        status: complete ? "connected" : "pending",
-        ...manifest.providers.vercel,
-        deployment_url: result.deploymentUrl ?? null,
+        status: outcome.pipelineComplete ? "connected" : "pending",
+        project: grant.vercelProject,
+        deployment_url: result.deploymentUrl ?? previousDeployUrl ?? null,
         deploy_branch: grant.deployBranch,
       },
-      supabase_meta: { status: "connected", isolated: true, ...manifest.providers.supabase },
-      lifecycle_status: complete ? "live" : "failed",
-      installed_version: complete ? "3.0.0" : null,
+      supabase_meta: {
+        status: "connected",
+        isolated: grant.resourceTier === "client_owned",
+        project_ref: grant.supabaseProjectRef,
+      },
+      lifecycle_status: outcome.lifecycleStatus,
+      installed_version: outcome.isIndependentLive ? "3.0.0" : null,
       updated_at: new Date().toISOString(),
     })
     .eq("id", installationId);
@@ -422,16 +482,24 @@ export async function runExistingResourcesInstallation(formData: FormData) {
     installation_id: installationId,
     operation_type: "install.real",
     environment: "preview",
-    status: complete ? "succeeded" : "failed",
-    summary: complete
-      ? "Instalación independiente completada (preview)"
-      : "Instalación incompleta — revisar pasos",
-    metadata: { steps: result.steps, deploymentUrl: result.deploymentUrl },
+    status: outcome.pipelineComplete ? "succeeded" : "failed",
+    summary: outcome.summary,
+    metadata: {
+      steps: result.steps,
+      deploymentUrl: result.deploymentUrl,
+      lifecycleStatus: outcome.lifecycleStatus,
+      resourceTier: grant.resourceTier,
+    },
     actor_user_id: user.id,
   });
 
   revalidatePath("/control/instalaciones");
   revalidatePath(`/control/instalaciones/${installationId}`);
 
-  return { ok: complete, result, complete };
+  return {
+    ok: outcome.pipelineComplete,
+    result,
+    outcome,
+    complete: outcome.isIndependentLive,
+  };
 }

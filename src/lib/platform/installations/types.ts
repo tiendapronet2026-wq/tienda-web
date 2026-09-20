@@ -3,6 +3,7 @@ export type ProviderLinkStatus = "unknown" | "pending" | "connected" | "simulate
 export type InstallationLifecycleStatus =
   | "draft"
   | "provisioning"
+  | "preview_validated"
   | "live"
   | "paused"
   | "failed"
