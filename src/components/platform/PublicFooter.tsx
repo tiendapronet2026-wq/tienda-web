@@ -1,6 +1,7 @@
 import Link from "next/link";
+import type { StoreBrandingConfig } from "@/lib/branding/types";
 
-const footerLinks = [
+const platformFooterLinks = [
   { href: "/servicios", label: "Servicios" },
   { href: "/modulos", label: "Módulos" },
   { href: "/demos", label: "Showroom" },
@@ -8,20 +9,25 @@ const footerLinks = [
   { href: "/app", label: "App cliente (demo)" },
 ];
 
-export function PublicFooter() {
+const storeFooterLinks = [
+  { href: "/productos", label: "Productos" },
+  { href: "/carrito", label: "Carrito" },
+  { href: "/login", label: "Iniciar sesión" },
+];
+
+export function PublicFooter({ branding }: { branding: StoreBrandingConfig }) {
+  const links = branding.platformMode ? platformFooterLinks : storeFooterLinks;
   return (
     <footer className="border-t border-border bg-surface">
       <div className="tp-container grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <p className="text-lg font-bold text-foreground">TiendaPro</p>
-          <p className="mt-2 text-sm leading-relaxed text-text-secondary">
-            Plataforma SaaS modular. Showroom y paneles demo claramente identificados; sin datos de producción.
-          </p>
+          <p className="text-lg font-bold text-foreground">{branding.brandName}</p>
+          <p className="mt-2 text-sm leading-relaxed text-text-secondary">{branding.tagline}</p>
         </div>
         <div>
           <p className="text-sm font-semibold text-foreground">Explorar</p>
           <ul className="mt-3 space-y-2">
-            {footerLinks.map((l) => (
+            {links.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className="text-sm text-text-secondary hover:text-brand">
                   {l.label}
@@ -31,16 +37,17 @@ export function PublicFooter() {
           </ul>
         </div>
         <div>
-          <p className="text-sm font-semibold text-foreground">Contacto comercial</p>
+          <p className="text-sm font-semibold text-foreground">Contacto</p>
           <p className="mt-3 text-sm text-text-secondary">
-            <a href="mailto:hola@tiendapro.net" className="font-medium text-brand hover:underline">
-              hola@tiendapro.net
+            <a href={`mailto:${branding.contactEmail}`} className="font-medium text-brand hover:underline">
+              {branding.contactEmail}
             </a>
           </p>
         </div>
       </div>
       <div className="border-t border-border py-4 text-center text-xs text-muted">
-        © {new Date().getFullYear()} TiendaPro · TiendaPro 3.0
+        © {new Date().getFullYear()} {branding.brandName}
+        {branding.platformMode ? " · TiendaPro 3.0" : ""}
       </div>
     </footer>
   );

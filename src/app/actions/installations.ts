@@ -70,7 +70,7 @@ export async function runInstallationDryRun(formData: FormData) {
   }
 
   const manifest = buildManifestFromWizardPayload(payload, { dryRun: true });
-  const result = runInstallationPipeline(manifest);
+  const result = await runInstallationPipeline(manifest);
 
   if (!isTiendaProSupabaseConfigured()) {
     return { ok: result.ok, result, mock: true };
@@ -123,10 +123,70 @@ export async function runInstallationDryRun(formData: FormData) {
   return { ok: result.ok, result, installationId };
 }
 
+/** Verificación real de vínculos (requiere tokens INSTALLER_* en servidor). No provisiona recursos. */
+export async function verifyProviderConnections(formData: FormData) {
+  const payload = parsePayload(formData);
+  if (!payload.companyName) {
+    payload.companyName = String(formData.get("company_name") ?? "Empresa demo");
+  }
+
+  payload.githubConnected = Boolean(String(payload.githubRepo ?? "").includes("/"));
+  payload.vercelConnected = Boolean(String(payload.vercelProject ?? "").trim());
+  payload.supabaseConnected = Boolean(String(payload.supabaseRef ?? "").trim());
+  payload.githubSimulated = false;
+  payload.vercelSimulated = false;
+  payload.supabaseSimulated = false;
+
+  const manifest = buildManifestFromWizardPayload(payload, { dryRun: false });
+  const result = await runInstallationPipeline(manifest);
+  const providerSteps = result.steps.filter((s) => s.step.startsWith("providers."));
+
+  const failed = providerSteps.some((s) => s.status === "failed");
+  const verified = providerSteps.filter((s) => s.status === "ok").length;
+
+  if (isTiendaProSupabaseConfigured()) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const installationId = String(formData.get("installation_id") ?? "").trim();
+      if (installationId) {
+        const admin = createAdminClient();
+        await admin.from("installation_operations").insert({
+          installation_id: installationId,
+          operation_type: "install.verify_links",
+          environment: "production",
+          status: failed ? "failed" : verified > 0 ? "ok" : "skipped",
+          summary: failed
+            ? "Verificación de vínculos con errores"
+            : verified > 0
+              ? `${verified} proveedor(es) verificados`
+              : "Tokens no configurados — verificación omitida",
+          metadata: { steps: providerSteps },
+          actor_user_id: user.id,
+        });
+        revalidatePath(`/control/instalaciones/${installationId}`);
+      }
+    }
+  }
+
+  return {
+    ok: !failed,
+    verifiedCount: verified,
+    steps: providerSteps,
+    tokensConfigured: {
+      github: Boolean(process.env.INSTALLER_GITHUB_TOKEN?.trim()),
+      vercel: Boolean(process.env.INSTALLER_VERCEL_TOKEN?.trim()),
+      supabase: Boolean(process.env.INSTALLER_SUPABASE_ACCESS_TOKEN?.trim()),
+    },
+  };
+}
+
 export async function registerSimulatedInstallation(formData: FormData): Promise<void> {
   const payload = parsePayload(formData);
   const manifest = buildManifestFromWizardPayload(payload, { dryRun: true });
-  const result = runInstallationPipeline(manifest);
+  const result = await runInstallationPipeline(manifest);
   if (!result.ok) {
     throw new Error("Manifiesto inválido");
   }
