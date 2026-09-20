@@ -64,7 +64,7 @@ export async function updateSession(request: NextRequest) {
   if (pathname.startsWith("/admin") && !user) {
     const login = request.nextUrl.clone();
     login.pathname = "/login";
-    login.searchParams.set("redirect", pathname.replace(/^\/admin/, "/control"));
+    login.searchParams.set("redirect", pathname);
     return NextResponse.redirect(login);
   }
 
