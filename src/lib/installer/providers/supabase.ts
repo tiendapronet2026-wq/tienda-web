@@ -1,15 +1,25 @@
+import type { InstallationResourceGrant } from "@/lib/installer/grants";
 import { assertAuthorizedTarget } from "@/lib/installer/providers/authorized";
 import type { ProviderVerifyResult } from "@/lib/installer/providers/types";
 
-export async function verifySupabaseProjectAccess(projectRef: string | undefined): Promise<ProviderVerifyResult> {
+const REQUIRED_MIGRATION_VERSIONS = ["20260920180000", "20260920213000"] as const;
+
+function supabaseMgmtToken(): string | null {
+  return process.env.INSTALLER_SUPABASE_ACCESS_TOKEN?.trim() || null;
+}
+
+export async function verifySupabaseProjectAccess(
+  projectRef: string | undefined,
+  grant?: InstallationResourceGrant | null
+): Promise<ProviderVerifyResult> {
   if (!projectRef?.trim()) {
     return { ok: false, status: "failed", message: "Project ref Supabase requerido" };
   }
 
-  const allowErr = assertAuthorizedTarget("supabase", projectRef);
+  const allowErr = assertAuthorizedTarget("supabase", projectRef, grant);
   if (allowErr) return { ok: false, status: "failed", message: allowErr };
 
-  const token = process.env.INSTALLER_SUPABASE_ACCESS_TOKEN?.trim();
+  const token = supabaseMgmtToken();
   if (!token) {
     return {
       ok: false,
@@ -36,4 +46,39 @@ export async function verifySupabaseProjectAccess(projectRef: string | undefined
     status: "ok",
     message: `Supabase: ${body.name ?? projectRef} (${body.id ?? projectRef})`,
   };
+}
+
+/** Solo verifica migraciones ya aplicadas (no ejecuta db push masivo). */
+export async function verifySupabaseMigrationsPresent(
+  projectRef: string,
+  grant?: InstallationResourceGrant | null
+): Promise<ProviderVerifyResult> {
+  const base = await verifySupabaseProjectAccess(projectRef, grant);
+  if (!base.ok) return base;
+
+  const token = supabaseMgmtToken();
+  if (!token) return { ok: false, status: "skipped", message: "Supabase token ausente" };
+
+  const res = await fetch(`https://api.supabase.com/v1/projects/${encodeURIComponent(projectRef)}/database/migrations`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    return { ok: false, status: "failed", message: `List migrations HTTP ${res.status}` };
+  }
+
+  const rows = (await res.json()) as Array<{ name?: string; version?: string }>;
+  const versions = new Set(rows.map((r) => String(r.version ?? "")));
+  const missing = REQUIRED_MIGRATION_VERSIONS.filter((v) => !versions.has(v));
+
+  if (missing.length) {
+    return {
+      ok: false,
+      status: "failed",
+      message: `Migraciones requeridas ausentes (versiones): ${missing.join(", ")}`,
+    };
+  }
+
+  return { ok: true, status: "ok", message: "Migraciones de plataforma/tienda verificadas en proyecto" };
 }

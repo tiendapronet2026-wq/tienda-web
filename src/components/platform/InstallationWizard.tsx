@@ -172,8 +172,11 @@ export function InstallationWizard({
             <code className="text-xs">INSTALLER_*</code> en el servidor; si no, informa omitido (no simula éxito).
           </li>
           <li>
-            <strong>Instalación cloud real</strong> — no operativa (requiere{" "}
-            <code className="text-xs">INSTALLER_ALLOW_PROVISION=1</code> y pasos pendientes).
+            <strong>Instalación real (preview)</strong> — operativa desde ficha instalación tras grant + tokens{" "}
+            <code className="text-xs">INSTALLER_*</code>.
+          </li>
+          <li>
+            <strong>Creación de proyectos cloud nuevos</strong> — no operativa (mock / bloqueada).
           </li>
         </ul>
       </div>
@@ -436,17 +439,16 @@ export function InstallationWizard({
         )}
         {step === 9 && (
           <>
-            <h2 className="text-lg font-semibold text-foreground">Registro en Control</h2>
+            <h2 className="text-lg font-semibold text-foreground">Registro e instalación real</h2>
             <p className="mt-2 text-sm text-text-secondary">
-              <strong>Operativo:</strong> registrar borrador / instancia con metadatos y{" "}
-              <code className="text-xs">branding_config</code> (sin deploy cloud).
+              <strong>Operativo:</strong> registrar borrador en Control y, desde la ficha de la instalación,
+              autorizar grant + ejecutar instalación real en preview (rama Git + env Vercel).
             </p>
             <p className="mt-2 text-sm text-text-secondary">
-              <strong>No operativo:</strong> crear repo, Supabase aislado, deploy Vercel y DNS — bloqueados hasta
-              provisionamiento autorizado.
+              <strong>No operativo aquí:</strong> creación de proyectos cloud nuevos (Etapa posterior).
             </p>
             <Button type="button" className="mt-6" onClick={finish} disabled={pending || !state.companyName}>
-              Registrar instalación en Control
+              Registrar en Control (continuar en ficha)
             </Button>
           </>
         )}

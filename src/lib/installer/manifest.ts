@@ -9,6 +9,8 @@ export type InstallationBrandingConfig = {
   contactEmail?: string;
 };
 
+export type InstallRunMode = "dry_run" | "existing_resources";
+
 export type InstallationManifest = {
   version: "1";
   companyName: string;
@@ -17,6 +19,9 @@ export type InstallationManifest = {
   primaryDomain: string | null;
   enabledModules: string[];
   branding: InstallationBrandingConfig;
+  runMode: InstallRunMode;
+  installationId?: string;
+  installEnvironment: "preview" | "production";
   providers: {
     github: { repo?: string; connected: boolean; simulated: boolean };
     vercel: { project?: string; connected: boolean; simulated: boolean };
@@ -36,6 +41,7 @@ export type InstallRunResult = {
   dryRun: boolean;
   steps: InstallStepResult[];
   manifest: InstallationManifest;
+  deploymentUrl?: string;
 };
 
 export function slugifyCompanyName(name: string): string {
@@ -74,6 +80,9 @@ export function buildManifestFromWizardPayload(
     : [];
   const primaryDomain = payload.primaryDomain ? String(payload.primaryDomain) : null;
   const brandName = payload.brandName ? String(payload.brandName) : companyName || undefined;
+  const runMode: InstallRunMode =
+    options.dryRun || payload.runMode !== "existing_resources" ? "dry_run" : "existing_resources";
+  const installEnvironment = payload.installEnvironment === "production" ? "production" : "preview";
 
   return {
     version: "1",
@@ -82,6 +91,9 @@ export function buildManifestFromWizardPayload(
     templateId,
     primaryDomain,
     enabledModules,
+    runMode,
+    installationId: payload.installationId ? String(payload.installationId) : undefined,
+    installEnvironment,
     branding: {
       brandName,
       tagline: payload.tagline ? String(payload.tagline) : undefined,

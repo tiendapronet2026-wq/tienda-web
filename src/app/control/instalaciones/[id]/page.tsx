@@ -11,6 +11,7 @@ import {
   loadInstallationOperations,
   loadPlatformInstallationById,
 } from "@/lib/platform/installations/loader";
+import { InstallationRunControls } from "@/components/platform/InstallationRunControls";
 
 export default async function InstalacionDetallePage({
   params,
@@ -38,6 +39,12 @@ export default async function InstalacionDetallePage({
           Instalación de referencia: no se modifican credenciales ni checkout desde Control.
         </p>
       ) : null}
+
+      <InstallationRunControls
+        installationId={installation.id}
+        companySlug={installation.companySlug}
+        canRun={!installation.isReference && installation.lifecycleStatus !== "live"}
+      />
 
       <dl className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <div className="rounded-xl border border-border bg-surface p-4">
