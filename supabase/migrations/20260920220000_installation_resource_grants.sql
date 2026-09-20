@@ -22,13 +22,21 @@ create index if not exists installation_resource_grants_installation_idx
 
 alter table public.installation_resource_grants enable row level security;
 
+drop policy if exists "installation_grants_read_control" on public.installation_resource_grants;
 create policy "installation_grants_read_control"
   on public.installation_resource_grants for select to authenticated
   using (public.is_control_operator());
 
-create policy "installation_grants_write_owner"
-  on public.installation_resource_grants for all to authenticated
+drop policy if exists "installation_grants_insert_owner" on public.installation_resource_grants;
+create policy "installation_grants_insert_owner"
+  on public.installation_resource_grants for insert to authenticated
+  with check (public.is_control_owner());
+
+drop policy if exists "installation_grants_update_owner" on public.installation_resource_grants;
+create policy "installation_grants_update_owner"
+  on public.installation_resource_grants for update to authenticated
   using (public.is_control_owner())
   with check (public.is_control_owner());
 
-grant select on public.installation_resource_grants to authenticated;
+-- Permisos SQL de tabla (RLS no sustituye GRANT).
+grant select, insert, update on public.installation_resource_grants to authenticated;
