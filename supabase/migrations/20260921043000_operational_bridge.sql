@@ -117,7 +117,7 @@ insert into public.bridge_projects (
   'tiendapronet2026-wq/tienda-web',
   'dnptsudsxrcamtxfiszh',
   'tienda-web',
-  true,
+  false,
   jsonb_build_object(
     'scope', 'pilot',
     'note', 'Único proyecto conectado al puente v1. Casa León / Pulso / Australes excluidos.'
@@ -127,6 +127,5 @@ insert into public.bridge_projects (
   github_repo = excluded.github_repo,
   supabase_project_ref = excluded.supabase_project_ref,
   vercel_project = excluded.vercel_project,
-  circuit_validated = excluded.circuit_validated,
   metadata = excluded.metadata,
   updated_at = now();

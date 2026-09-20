@@ -26,10 +26,16 @@ export type BridgeTaskResources = {
 export type BridgeTaskResultReport = {
   summary?: string;
   filesChanged?: string[];
-  tests?: { name: string; status: "pass" | "fail" | "skipped" }[];
+  tests?: {
+    name: string;
+    status: "pass" | "fail" | "skipped";
+    claimed?: "pass" | "fail" | "unknown";
+  }[];
   prUrl?: string | null;
   deployUrl?: string | null;
   errors?: string[];
   nextAction?: string | null;
   simulated?: boolean;
+  trustLevel?: "owner_verified" | "external_unverified";
+  testsVerified?: boolean;
 };

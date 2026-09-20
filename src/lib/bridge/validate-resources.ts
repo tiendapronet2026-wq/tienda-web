@@ -37,16 +37,3 @@ export function assertBridgeResourcesMatchProject(
   }
   return null;
 }
-
-export function resolveModeCApproval(input: {
-  riskClass: "minor" | "critical";
-  circuitValidated: boolean;
-}): { approvalRequired: boolean; initialStatus: "pending_approval" | "approved" } {
-  if (input.riskClass === "critical") {
-    return { approvalRequired: true, initialStatus: "pending_approval" };
-  }
-  if (input.circuitValidated) {
-    return { approvalRequired: false, initialStatus: "approved" };
-  }
-  return { approvalRequired: true, initialStatus: "pending_approval" };
-}
