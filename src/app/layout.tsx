@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { PublicHeader } from "@/components/platform/PublicHeader";
 import { PublicFooter } from "@/components/platform/PublicFooter";
 import { BrandingStyles } from "@/components/branding/BrandingStyles";
+import { RecoveryHashRedirect } from "@/components/auth/RecoveryHashRedirect";
 import { loadRuntimeStoreBranding } from "@/lib/branding/load-runtime-branding";
 import { buildStoreMetadata } from "@/lib/branding/metadata";
 import "./globals.css";
@@ -39,6 +40,7 @@ export default async function RootLayout({
     <html lang="es">
       <body className={`${plusJakarta.variable} antialiased`} style={{ fontFamily: branding.fontFamily }}>
         <BrandingStyles branding={branding} />
+        <RecoveryHashRedirect />
         <div className="min-h-screen bg-background text-foreground">
           {hidePublicChrome ? null : <PublicHeader branding={branding} />}
           <main>{children}</main>
