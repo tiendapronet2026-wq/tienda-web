@@ -1,6 +1,6 @@
 /**
- * Checkout tienda: habilitado solo cuando el flag está activo y no estamos en Production
- * (Production permanece cerrado hasta continuidad de datos o decisión explícita).
+ * Checkout tienda: requiere TIENDAPRO_CHECKOUT_ENABLED=1.
+ * En Production además TIENDAPRO_CHECKOUT_PRODUCTION=1.
  */
 export function isCheckoutEnabled(): boolean {
   if (process.env.TIENDAPRO_CHECKOUT_ENABLED !== "1") {
