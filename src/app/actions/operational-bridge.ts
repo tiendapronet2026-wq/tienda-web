@@ -1,29 +1,26 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
-import { requireControlOwner } from "@/lib/platform/control-owner-guard";
-import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
-import { BRIDGE_PILOT_PROJECT_SLUG } from "@/lib/bridge/constants";
+import { requireControlOperator } from "@/lib/bridge/control-operator-guard";
 import { createBridgeTaskRecord } from "@/lib/bridge/create-task";
 import {
   loadBridgeProjectBySlug,
-  loadBridgeTaskById,
+  loadBridgeTaskByIdForPanel,
   updateBridgeTask,
 } from "@/lib/bridge/repository";
+import { registerBridgeTaskResultOwner } from "@/lib/bridge/register-result-service";
 import { buildSimulatedCursorResult, dispatchBridgeTaskViaGitHubIssue } from "@/lib/bridge/transports";
-import type { BridgeTaskResultReport } from "@/lib/bridge/constants";
+import { requireControlOwner } from "@/lib/platform/control-owner-guard";
+import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
+import { BRIDGE_PILOT_PROJECT_SLUG } from "@/lib/bridge/constants";
 
 export async function createOperationalTask(formData: FormData) {
   if (!isTiendaProSupabaseConfigured()) {
     return { ok: false, error: "Plataforma no configurada" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { ok: false, error: "Sesión requerida" };
+  const gate = await requireControlOperator();
+  if (!gate.ok) return { ok: false, error: gate.error };
 
   const project = await loadBridgeProjectBySlug(
     String(formData.get("project_slug") ?? BRIDGE_PILOT_PROJECT_SLUG)
@@ -41,7 +38,7 @@ export async function createOperationalTask(formData: FormData) {
     instruction,
     riskClass,
     source: "control_ui",
-    actor: user.id,
+    actor: gate.userId,
     resourcesOverride: {
       github_repo: String(formData.get("github_repo") ?? project.github_repo),
       supabase_project_ref: String(formData.get("supabase_ref") ?? project.supabase_project_ref),
@@ -59,7 +56,7 @@ export async function approveOperationalTask(taskId: string) {
   const gate = await requireControlOwner();
   if (!gate.ok) return { ok: false, error: gate.error };
 
-  const { task } = await loadBridgeTaskById(taskId);
+  const { task } = await loadBridgeTaskByIdForPanel(taskId);
   if (!task) return { ok: false, error: "Tarea no encontrada" };
   if (task.status !== "pending_approval") {
     return { ok: false, error: "La tarea no está pendiente de aprobación" };
@@ -88,18 +85,17 @@ export async function dispatchOperationalTask(taskId: string) {
   const gate = await requireControlOwner();
   if (!gate.ok) return { ok: false, error: gate.error };
 
-  const { task } = await loadBridgeTaskById(taskId);
+  const { task } = await loadBridgeTaskByIdForPanel(taskId);
   if (!task) return { ok: false, error: "Tarea no encontrada" };
   if (task.status !== "approved") {
     return { ok: false, error: "Aprobá la tarea antes de despachar" };
   }
 
-  const githubRepo = task.resources.github_repo;
   const dispatch = await dispatchBridgeTaskViaGitHubIssue({
     taskId,
     title: task.title,
     instruction: task.instruction,
-    githubRepo,
+    githubRepo: task.resources.github_repo,
     riskClass: task.risk_class,
   });
 
@@ -139,39 +135,14 @@ export async function dispatchOperationalTask(taskId: string) {
   return { ok: true, issueUrl: dispatch.issueUrl, simulated: dispatch.simulated };
 }
 
-export async function registerOperationalTaskResult(
-  taskId: string,
-  report: BridgeTaskResultReport,
-  actor: string
-) {
-  const status = report.errors?.length ? "failed" : "completed";
-  await updateBridgeTask(
-    taskId,
-    {
-      status,
-      result_report: report,
-    },
-    {
-      eventType: "task.result",
-      summary: report.summary ?? "Resultado registrado",
-      payload: report as Record<string, unknown>,
-      actor,
-    }
-  );
-}
-
 export async function simulateOperationalTaskCompletion(taskId: string) {
   const gate = await requireControlOwner();
   if (!gate.ok) return { ok: false, error: gate.error };
 
-  const { task } = await loadBridgeTaskById(taskId);
-  if (!task) return { ok: false, error: "Tarea no encontrada" };
-  if (!["dispatched", "running"].includes(task.status)) {
-    return { ok: false, error: "Despachá la tarea primero" };
-  }
-
   const report = buildSimulatedCursorResult();
-  await registerOperationalTaskResult(taskId, report, gate.userId);
+  const registered = await registerBridgeTaskResultOwner(taskId, report, gate.userId);
+  if (!registered.ok) return registered;
+
   revalidatePath("/control/tareas");
   revalidatePath(`/control/tareas/${taskId}`);
   return { ok: true, report };

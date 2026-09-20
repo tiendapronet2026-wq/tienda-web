@@ -77,7 +77,7 @@ export async function loadBridgeProjectBySlug(slug: string): Promise<BridgeProje
   return (data as BridgeProjectRow) ?? null;
 }
 
-export async function loadBridgeTasks(limit = 50): Promise<BridgeTaskRow[]> {
+export async function loadBridgeTasksForPanel(limit = 50): Promise<BridgeTaskRow[]> {
   if (!isTiendaProSupabaseConfigured()) return [];
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -91,7 +91,27 @@ export async function loadBridgeTasks(limit = 50): Promise<BridgeTaskRow[]> {
   return (data ?? []) as unknown as BridgeTaskRow[];
 }
 
-export async function loadBridgeTaskById(id: string): Promise<{
+/** Lectura vía service_role — solo rutas API con Bearer (sin cookies). */
+export async function loadBridgeTasksForBridgeApi(limit = 50): Promise<BridgeTaskRow[]> {
+  if (!isTiendaProSupabaseConfigured()) return [];
+  const admin = getBridgeAdminClient();
+  const { data, error } = await admin
+    .from("bridge_tasks")
+    .select(
+      "id, project_id, title, instruction, risk_class, status, approval_required, owner_approved_at, source, resources, executor, external_ref, result_report, created_at, updated_at, bridge_projects(slug, display_name)"
+    )
+    .order("created_at", { ascending: false })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return (data ?? []) as unknown as BridgeTaskRow[];
+}
+
+/** @deprecated use loadBridgeTasksForPanel or loadBridgeTasksForBridgeApi */
+export async function loadBridgeTasks(limit = 50): Promise<BridgeTaskRow[]> {
+  return loadBridgeTasksForPanel(limit);
+}
+
+export async function loadBridgeTaskByIdForPanel(id: string): Promise<{
   task: BridgeTaskRow | null;
   events: BridgeTaskEventRow[];
 }> {
@@ -116,6 +136,40 @@ export async function loadBridgeTaskById(id: string): Promise<{
   if (tErr) throw new Error(tErr.message);
   if (eErr) throw new Error(eErr.message);
   return { task: (task as unknown as BridgeTaskRow) ?? null, events: (events ?? []) as BridgeTaskEventRow[] };
+}
+
+export async function loadBridgeTaskByIdForBridgeApi(id: string): Promise<{
+  task: BridgeTaskRow | null;
+  events: BridgeTaskEventRow[];
+}> {
+  if (!isTiendaProSupabaseConfigured()) {
+    return { task: null, events: [] };
+  }
+  const admin = getBridgeAdminClient();
+  const [{ data: task, error: tErr }, { data: events, error: eErr }] = await Promise.all([
+    admin
+      .from("bridge_tasks")
+      .select(
+        "id, project_id, title, instruction, risk_class, status, approval_required, owner_approved_at, source, resources, executor, external_ref, result_report, created_at, updated_at, bridge_projects(slug, display_name)"
+      )
+      .eq("id", id)
+      .maybeSingle(),
+    admin
+      .from("bridge_task_events")
+      .select("id, task_id, event_type, summary, payload, actor, created_at")
+      .eq("task_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
+  if (tErr) throw new Error(tErr.message);
+  if (eErr) throw new Error(eErr.message);
+  return { task: (task as unknown as BridgeTaskRow) ?? null, events: (events ?? []) as BridgeTaskEventRow[] };
+}
+
+export async function loadBridgeTaskById(id: string): Promise<{
+  task: BridgeTaskRow | null;
+  events: BridgeTaskEventRow[];
+}> {
+  return loadBridgeTaskByIdForPanel(id);
 }
 
 export async function appendBridgeTaskEvent(input: {

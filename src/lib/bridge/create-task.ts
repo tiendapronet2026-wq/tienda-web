@@ -2,8 +2,8 @@ import type { BridgeTaskRiskClass } from "@/lib/bridge/constants";
 import {
   assertBridgeResourcesMatchProject,
   normalizeBridgeResources,
-  resolveModeCApproval,
 } from "@/lib/bridge/validate-resources";
+import { resolveModeCApproval } from "@/lib/bridge/register-result";
 import { appendBridgeTaskEvent, loadBridgeProjectBySlug, getBridgeAdminClient } from "@/lib/bridge/repository";
 
 export async function createBridgeTaskRecord(input: {
@@ -39,6 +39,7 @@ export async function createBridgeTaskRecord(input: {
   const mode = resolveModeCApproval({
     riskClass: input.riskClass,
     circuitValidated: project.circuit_validated,
+    source: input.source,
   });
 
   const admin = getBridgeAdminClient();

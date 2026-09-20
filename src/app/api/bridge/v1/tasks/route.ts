@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { getBridgeApiAuthHeader, isBridgeApiConfigured, verifyBridgeApiSecret } from "@/lib/bridge/api-auth";
 import { BRIDGE_PILOT_PROJECT_SLUG } from "@/lib/bridge/constants";
 import { createBridgeTaskRecord } from "@/lib/bridge/create-task";
-import { loadBridgeTasks } from "@/lib/bridge/repository";
+import { normalizeExternalRiskClass } from "@/lib/bridge/register-result";
+import { loadBridgeTasksForBridgeApi } from "@/lib/bridge/repository";
 import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
 
 function unauthorized() {
@@ -25,7 +26,7 @@ export async function GET(request: Request) {
 
   const url = new URL(request.url);
   const limit = Math.min(Number(url.searchParams.get("limit") ?? 20), 100);
-  const tasks = await loadBridgeTasks(limit);
+  const tasks = await loadBridgeTasksForBridgeApi(limit);
 
   return NextResponse.json({
     ok: true,
@@ -62,7 +63,7 @@ export async function POST(request: Request) {
 
   const title = String(body.title ?? "Tarea bridge").trim();
   const instruction = String(body.instruction ?? "").trim();
-  const riskClass = body.risk_class === "critical" ? "critical" : "minor";
+  const riskClass = normalizeExternalRiskClass(body.risk_class, "bridge_api");
   const projectSlug = String(body.project_slug ?? BRIDGE_PILOT_PROJECT_SLUG);
 
   if (!instruction) {

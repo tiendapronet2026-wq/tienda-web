@@ -3,14 +3,18 @@ import { PageTitle } from "@/components/platform/PageTitle";
 import { PlatformPanelDataNotice } from "@/components/platform/PlatformPanelDataNotice";
 import { OperationalTaskCreateForm } from "@/components/platform/OperationalBridgePanel";
 import { mockTasks } from "@/lib/mock/panel-data";
-import { loadBridgeTasks } from "@/lib/bridge/repository";
+import { loadBridgeProjects, loadBridgeTasksForPanel } from "@/lib/bridge/repository";
+import { BRIDGE_PILOT_PROJECT_SLUG } from "@/lib/bridge/constants";
 import { isExplicitDevMockMode, isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
 import { isBridgeApiConfigured } from "@/lib/bridge/api-auth";
 
 export default async function ControlTareasPage() {
   const mockMode = isExplicitDevMockMode();
   const platform = isTiendaProSupabaseConfigured();
-  const tasks = platform ? await loadBridgeTasks(30) : [];
+  const [tasks, projects] = platform
+    ? await Promise.all([loadBridgeTasksForPanel(30), loadBridgeProjects()])
+    : [[], []];
+  const pilot = projects.find((p) => p.slug === BRIDGE_PILOT_PROJECT_SLUG);
 
   return (
     <>
@@ -39,6 +43,13 @@ export default async function ControlTareasPage() {
             <code className="text-xs">dnptsudsxrcamtxfiszh</code>. API bridge:{" "}
             {isBridgeApiConfigured() ? "activa (BRIDGE_API_SECRET)" : "inactiva — configurar secret en Vercel"}
           </div>
+
+          {pilot && !pilot.circuit_validated ? (
+            <div className="mt-3 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+              Circuito E2E del puente <strong>no validado</strong> — las tareas externas requieren aprobación owner;
+              la auto-aprobación modo C (minor) solo aplica tras validar el circuito en producción.
+            </div>
+          ) : null}
 
           <OperationalTaskCreateForm />
 
