@@ -14,6 +14,12 @@ import {
   manifestMatchesGrant,
 } from "@/lib/installer/grants";
 import { buildResourceGrantUpsertRow, validateResourceGrantInput } from "@/lib/installer/grant-form";
+import { requireControlOwner, type ControlOwnerGateResult } from "@/lib/platform/control-owner-guard";
+import { recordInstallationOperation } from "@/lib/platform/installation-operation-audit";
+
+function ownerActionDenied(gate: Extract<ControlOwnerGateResult, { ok: false }>) {
+  return { ok: false as const, error: gate.error, code: gate.code };
+}
 
 function parsePayload(formData: FormData): Record<string, unknown> {
   const raw = formData.get("payload");
@@ -76,18 +82,19 @@ export async function runInstallationDryRun(formData: FormData) {
     payload.companySlug = slugifyCompanyName(String(payload.companyName));
   }
 
+  let ownerUserId: string | null = null;
+  if (isTiendaProSupabaseConfigured()) {
+    const gate = await requireControlOwner();
+    if (!gate.ok) return ownerActionDenied(gate);
+    ownerUserId = gate.userId;
+  }
+
   const manifest = buildManifestFromWizardPayload(payload, { dryRun: true });
   const result = await runInstallationPipeline(manifest);
 
   if (!isTiendaProSupabaseConfigured()) {
     return { ok: result.ok, result, mock: true };
   }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?redirect=/control/instalaciones/nueva");
 
   let installationId = String(formData.get("installation_id") ?? "").trim() || null;
 
@@ -114,15 +121,20 @@ export async function runInstallationDryRun(formData: FormData) {
     installationId = inst.id;
   }
 
-  await admin.from("installation_operations").insert({
+  if (!installationId) {
+    return { ok: false, error: "installation_id requerido", result };
+  }
+
+  const audit = await recordInstallationOperation(admin, {
     installation_id: installationId,
     operation_type: "install.dry_run",
     environment: "production",
     status: "simulated",
     summary: result.ok ? "Manifiesto validado (simulación)" : "Manifiesto con errores",
     metadata: { steps: result.steps, manifest: result.manifest },
-    actor_user_id: user.id,
+    actor_user_id: ownerUserId!,
   });
+  if (!audit.ok) return { ok: false, error: audit.error, result, installationId };
 
   revalidatePath("/control/instalaciones");
   if (installationId) revalidatePath(`/control/instalaciones/${installationId}`);
@@ -132,6 +144,28 @@ export async function runInstallationDryRun(formData: FormData) {
 
 /** Verificación real de vínculos (requiere tokens INSTALLER_* en servidor). No provisiona recursos. */
 export async function verifyProviderConnections(formData: FormData) {
+  const tokensConfigured = {
+    github: Boolean(process.env.INSTALLER_GITHUB_TOKEN?.trim()),
+    vercel: Boolean(process.env.INSTALLER_VERCEL_TOKEN?.trim()),
+    supabase: Boolean(process.env.INSTALLER_SUPABASE_ACCESS_TOKEN?.trim()),
+  };
+
+  let ownerUserId: string | null = null;
+  if (isTiendaProSupabaseConfigured()) {
+    const gate = await requireControlOwner();
+    if (!gate.ok) {
+      return {
+        ok: false,
+        error: gate.error,
+        code: gate.code,
+        verifiedCount: 0,
+        steps: [],
+        tokensConfigured,
+      };
+    }
+    ownerUserId = gate.userId;
+  }
+
   const payload = parsePayload(formData);
   if (!payload.companyName) {
     payload.companyName = String(formData.get("company_name") ?? "Empresa demo");
@@ -157,30 +191,33 @@ export async function verifyProviderConnections(formData: FormData) {
   const failed = providerSteps.some((s) => s.status === "failed");
   const verified = providerSteps.filter((s) => s.status === "ok").length;
 
-  if (isTiendaProSupabaseConfigured()) {
-    const supabase = await createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (user) {
-      const installationId = String(formData.get("installation_id") ?? "").trim();
-      if (installationId) {
-        const admin = createAdminClient();
-        await admin.from("installation_operations").insert({
-          installation_id: installationId,
-          operation_type: "install.verify_links",
-          environment: "production",
-          status: failed ? "failed" : verified > 0 ? "ok" : "skipped",
-          summary: failed
-            ? "Verificación de vínculos con errores"
-            : verified > 0
-              ? `${verified} proveedor(es) verificados`
-              : "Tokens no configurados — verificación omitida",
-          metadata: { steps: providerSteps },
-          actor_user_id: user.id,
-        });
-        revalidatePath(`/control/instalaciones/${installationId}`);
+  if (ownerUserId) {
+    const installationId = String(formData.get("installation_id") ?? "").trim();
+    if (installationId) {
+      const admin = createAdminClient();
+      const audit = await recordInstallationOperation(admin, {
+        installation_id: installationId,
+        operation_type: "install.verify_links",
+        environment: "production",
+        status: failed ? "failed" : verified > 0 ? "ok" : "skipped",
+        summary: failed
+          ? "Verificación de vínculos con errores"
+          : verified > 0
+            ? `${verified} proveedor(es) verificados`
+            : "Tokens no configurados — verificación omitida",
+        metadata: { steps: providerSteps },
+        actor_user_id: ownerUserId,
+      });
+      if (!audit.ok) {
+        return {
+          ok: false,
+          error: audit.error,
+          verifiedCount: verified,
+          steps: providerSteps,
+          tokensConfigured,
+        };
       }
+      revalidatePath(`/control/instalaciones/${installationId}`);
     }
   }
 
@@ -188,31 +225,31 @@ export async function verifyProviderConnections(formData: FormData) {
     ok: !failed,
     verifiedCount: verified,
     steps: providerSteps,
-    tokensConfigured: {
-      github: Boolean(process.env.INSTALLER_GITHUB_TOKEN?.trim()),
-      vercel: Boolean(process.env.INSTALLER_VERCEL_TOKEN?.trim()),
-      supabase: Boolean(process.env.INSTALLER_SUPABASE_ACCESS_TOKEN?.trim()),
-    },
+    tokensConfigured,
   };
 }
 
 export async function registerSimulatedInstallation(formData: FormData): Promise<void> {
   const payload = parsePayload(formData);
   const manifest = buildManifestFromWizardPayload(payload, { dryRun: true });
+
+  if (!isTiendaProSupabaseConfigured()) {
+    const result = await runInstallationPipeline(manifest);
+    if (!result.ok) {
+      throw new Error("Manifiesto inválido");
+    }
+    redirect("/control/instalaciones?mock=1");
+  }
+
+  const gate = await requireControlOwner();
+  if (!gate.ok) {
+    throw new Error(gate.error);
+  }
+
   const result = await runInstallationPipeline(manifest);
   if (!result.ok) {
     throw new Error("Manifiesto inválido");
   }
-
-  if (!isTiendaProSupabaseConfigured()) {
-    redirect("/control/instalaciones?mock=1");
-  }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?redirect=/control/instalaciones/nueva");
 
   const admin = createAdminClient();
   const { data: inst, error } = await admin
@@ -239,17 +276,19 @@ export async function registerSimulatedInstallation(formData: FormData): Promise
 
   if (error) throw new Error(error.message);
 
-  await admin.from("installation_operations").insert({
+  const audit = await recordInstallationOperation(admin, {
     installation_id: inst.id,
     operation_type: "install.register",
     status: "simulated",
     summary: "Instancia registrada (sin cloud real)",
     metadata: { manifest },
-    actor_user_id: user.id,
+    actor_user_id: gate.userId,
   });
+  if (!audit.ok) throw new Error(audit.error);
 
   const draftId = String(formData.get("draft_id") ?? "").trim();
   if (draftId) {
+    const supabase = await createClient();
     await supabase
       .from("installation_wizard_drafts")
       .update({ status: "completed", linked_installation_id: inst.id })
@@ -266,11 +305,8 @@ export async function createInstallationResourceGrant(formData: FormData) {
     return { ok: false, error: "Supabase no configurado" };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?redirect=/control/instalaciones");
+  const gate = await requireControlOwner();
+  if (!gate.ok) return ownerActionDenied(gate);
 
   const installationId = String(formData.get("installation_id") ?? "").trim();
   if (!installationId) return { ok: false, error: "installation_id requerido" };
@@ -318,7 +354,7 @@ export async function createInstallationResourceGrant(formData: FormData) {
 
   if (error) return { ok: false, error: error.message };
 
-  await admin.from("installation_operations").insert({
+  const audit = await recordInstallationOperation(admin, {
     installation_id: installationId,
     operation_type: "install.authorize_grant",
     status: "succeeded",
@@ -333,8 +369,9 @@ export async function createInstallationResourceGrant(formData: FormData) {
       vercelProject: grant.vercel_project,
       supabaseRef: grant.supabase_project_ref,
     },
-    actor_user_id: user.id,
+    actor_user_id: gate.userId,
   });
+  if (!audit.ok) return audit;
 
   revalidatePath(`/control/instalaciones/${installationId}`);
   return { ok: true, deployBranch: grant.deploy_branch, resourceTier: grant.resource_tier };
@@ -345,6 +382,14 @@ export async function runExistingResourcesInstallation(formData: FormData) {
   const installationId = String(formData.get("installation_id") ?? payload.installationId ?? "").trim();
   if (!installationId) {
     return { ok: false, error: "installation_id requerido" };
+  }
+
+  const configured = isTiendaProSupabaseConfigured();
+  let ownerUserId: string | null = null;
+  if (configured) {
+    const gate = await requireControlOwner();
+    if (!gate.ok) return ownerActionDenied(gate);
+    ownerUserId = gate.userId;
   }
 
   const admin = createAdminClient();
@@ -410,7 +455,7 @@ export async function runExistingResourcesInstallation(formData: FormData) {
   const supabaseAnonKey = String(formData.get("client_supabase_anon_key") ?? "").trim();
   const siteUrl = String(formData.get("client_site_url") ?? "").trim();
 
-  if (!isTiendaProSupabaseConfigured()) {
+  if (!configured) {
     const result = await runInstallationPipeline(manifest, {
       grant,
       completedSteps,
@@ -424,21 +469,35 @@ export async function runExistingResourcesInstallation(formData: FormData) {
     return { ok: outcome.pipelineComplete, result, outcome, mock: true };
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) redirect("/login?redirect=/control/instalaciones");
+  const skipPipeline = String(formData.get("skip_pipeline") ?? "") === "1";
 
-  await admin.from("installation_operations").insert({
+  const startAudit = await recordInstallationOperation(admin, {
     installation_id: installationId,
     operation_type: "install.real",
     environment: "preview",
-    status: "running",
-    summary: "Instalación con recursos existentes iniciada",
+    status: skipPipeline ? "skipped" : "running",
+    summary: skipPipeline
+      ? "Instalación omitida (skip_pipeline) — solo validación de grant/manifiesto"
+      : "Instalación con recursos existentes iniciada",
     metadata: { manifest: { companySlug: manifest.companySlug, templateId: manifest.templateId } },
-    actor_user_id: user.id,
+    actor_user_id: ownerUserId!,
   });
+  if (!startAudit.ok) return startAudit;
+
+  if (skipPipeline) {
+    revalidatePath("/control/instalaciones");
+    revalidatePath(`/control/instalaciones/${installationId}`);
+    return {
+      ok: true,
+      skippedPipeline: true,
+      outcome: {
+        pipelineComplete: false,
+        lifecycleStatus: "draft",
+        summary: "Pipeline no ejecutado (prueba de autorización)",
+        isIndependentLive: false,
+      },
+    };
+  }
 
   const result = await runInstallationPipeline(manifest, {
     grant,
@@ -477,7 +536,7 @@ export async function runExistingResourcesInstallation(formData: FormData) {
     })
     .eq("id", installationId);
 
-  await admin.from("installation_operations").insert({
+  const endAudit = await recordInstallationOperation(admin, {
     installation_id: installationId,
     operation_type: "install.real",
     environment: "preview",
@@ -489,8 +548,11 @@ export async function runExistingResourcesInstallation(formData: FormData) {
       lifecycleStatus: outcome.lifecycleStatus,
       resourceTier: grant.resourceTier,
     },
-    actor_user_id: user.id,
+    actor_user_id: ownerUserId!,
   });
+  if (!endAudit.ok) {
+    return { ok: false, error: endAudit.error, result, outcome };
+  }
 
   revalidatePath("/control/instalaciones");
   revalidatePath(`/control/instalaciones/${installationId}`);

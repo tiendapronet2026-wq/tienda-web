@@ -12,6 +12,10 @@ import {
   loadPlatformInstallationById,
 } from "@/lib/platform/installations/loader";
 import { InstallationRunControls } from "@/components/platform/InstallationRunControls";
+import { createClient } from "@/lib/supabase/server";
+import { loadSessionPlatformContext } from "@/lib/platform/session-platform";
+import { isControlOwnerRole } from "@/lib/platform/control-owner-guard";
+import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
 
 export default async function InstalacionDetallePage({
   params,
@@ -23,6 +27,22 @@ export default async function InstalacionDetallePage({
   if (!installation) notFound();
 
   const operations = await loadInstallationOperations(id);
+
+  let canRunInstaller =
+    !installation.isReference && !["live", "archived"].includes(installation.lifecycleStatus);
+
+  if (isTiendaProSupabaseConfigured()) {
+    const supabase = await createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (user) {
+      const ctx = await loadSessionPlatformContext(supabase, user.id);
+      canRunInstaller = canRunInstaller && isControlOwnerRole(ctx);
+    } else {
+      canRunInstaller = false;
+    }
+  }
 
   return (
     <>
@@ -43,7 +63,7 @@ export default async function InstalacionDetallePage({
       <InstallationRunControls
         installationId={installation.id}
         companySlug={installation.companySlug}
-        canRun={!installation.isReference && !["live", "archived"].includes(installation.lifecycleStatus)}
+        canRun={canRunInstaller}
       />
 
       <dl className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">

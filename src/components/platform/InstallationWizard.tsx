@@ -125,8 +125,10 @@ export function InstallationWizard({
     if (draftId) fd.set("draft_id", draftId);
     startTransition(async () => {
       const res = await runInstallationDryRun(fd);
-      if (res.result?.steps) {
+      if (res.ok && "result" in res && res.result?.steps) {
         setDryRunLog(res.result.steps.map((s) => `${s.step}: ${s.message}`));
+      } else if (!res.ok && "error" in res) {
+        setDryRunLog([res.error ?? "Acción denegada"]);
       }
     });
   }
