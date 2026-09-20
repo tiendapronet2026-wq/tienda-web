@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { cookies } from "next/headers";
+import { buildPasswordResetRedirectUrl } from "@/lib/auth/password-recovery";
 import { SESSION_COOKIE, getSiteUrl } from "@/lib/cart/session";
 import { sanitizeSignInRedirect } from "@/lib/platform/panel-access";
 import { loadSessionPlatformContext } from "@/lib/platform/session-platform";
@@ -110,7 +111,7 @@ export async function requestPasswordReset(formData: FormData) {
   }
 
   const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${getSiteUrl()}/actualizar-password`,
+    redirectTo: buildPasswordResetRedirectUrl(getSiteUrl()),
   });
 
   if (error) {
