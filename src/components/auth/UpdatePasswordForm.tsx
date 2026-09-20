@@ -19,6 +19,7 @@ async function updatePasswordClient(formData: FormData) {
     }
     return { error: error.message };
   }
+  await supabase.auth.signOut();
   return { success: "ok" };
 }
 
