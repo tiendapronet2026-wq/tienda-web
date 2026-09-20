@@ -1,3 +1,14 @@
+export type InstallationBrandingConfig = {
+  brandName?: string;
+  tagline?: string;
+  logoUrl?: string;
+  faviconUrl?: string;
+  primaryColor?: string;
+  secondaryColor?: string;
+  fontFamily?: string;
+  contactEmail?: string;
+};
+
 export type InstallationManifest = {
   version: "1";
   companyName: string;
@@ -5,11 +16,7 @@ export type InstallationManifest = {
   templateId: string;
   primaryDomain: string | null;
   enabledModules: string[];
-  branding: {
-    logoUrl?: string;
-    primaryColor?: string;
-    fontFamily?: string;
-  };
+  branding: InstallationBrandingConfig;
   providers: {
     github: { repo?: string; connected: boolean; simulated: boolean };
     vercel: { project?: string; connected: boolean; simulated: boolean };
@@ -66,6 +73,7 @@ export function buildManifestFromWizardPayload(
     ? (payload.modules as string[])
     : [];
   const primaryDomain = payload.primaryDomain ? String(payload.primaryDomain) : null;
+  const brandName = payload.brandName ? String(payload.brandName) : companyName || undefined;
 
   return {
     version: "1",
@@ -75,9 +83,14 @@ export function buildManifestFromWizardPayload(
     primaryDomain,
     enabledModules,
     branding: {
+      brandName,
+      tagline: payload.tagline ? String(payload.tagline) : undefined,
       logoUrl: payload.logoUrl ? String(payload.logoUrl) : undefined,
+      faviconUrl: payload.faviconUrl ? String(payload.faviconUrl) : undefined,
       primaryColor: payload.primaryColor ? String(payload.primaryColor) : undefined,
+      secondaryColor: payload.secondaryColor ? String(payload.secondaryColor) : undefined,
       fontFamily: payload.fontFamily ? String(payload.fontFamily) : undefined,
+      contactEmail: payload.contactEmail ? String(payload.contactEmail) : undefined,
     },
     providers: {
       github: {

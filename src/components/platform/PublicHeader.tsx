@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { StoreBrandingConfig } from "@/lib/branding/types";
 import { BrandLogo } from "@/components/BrandLogo";
 import { ButtonLink } from "@/components/ui/Button";
 
@@ -9,11 +10,11 @@ const links = [
   { href: "/demos", label: "Showroom" },
 ];
 
-export function PublicHeader() {
+export function PublicHeader({ branding }: { branding: StoreBrandingConfig }) {
   return (
     <header className="sticky top-0 z-50 border-b border-border/80 bg-surface/90 backdrop-blur-md">
       <div className="tp-container flex h-[var(--header-h)] items-center justify-between gap-3">
-        <BrandLogo variant="light" priority />
+        <BrandLogo variant="light" priority branding={branding} />
         <nav className="hidden items-center gap-1 md:flex">
           {links.map((link) => (
             <Link
@@ -26,12 +27,20 @@ export function PublicHeader() {
           ))}
         </nav>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          <ButtonLink href="/login?redirect=/control" size="sm" variant="outline" className="hidden sm:inline-flex">
-            Control
-          </ButtonLink>
-          <ButtonLink href="/login?redirect=/app" size="sm" variant="secondary">
-            App cliente
-          </ButtonLink>
+          {branding.platformMode ? (
+            <>
+              <ButtonLink href="/login?redirect=/control" size="sm" variant="outline" className="hidden sm:inline-flex">
+                Control
+              </ButtonLink>
+              <ButtonLink href="/login?redirect=/app" size="sm" variant="secondary">
+                App cliente
+              </ButtonLink>
+            </>
+          ) : (
+            <ButtonLink href="/login?redirect=/productos" size="sm" variant="secondary">
+              Mi cuenta
+            </ButtonLink>
+          )}
         </div>
       </div>
     </header>

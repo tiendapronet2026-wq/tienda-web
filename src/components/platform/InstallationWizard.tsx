@@ -3,12 +3,16 @@
 import { useMemo, useState, useTransition } from "react";
 import { MODULE_REGISTRY, type ModuleId } from "@/lib/modules/registry";
 import type { InstallationTemplateRow } from "@/lib/platform/installations/types";
+import { TIENDAPRO_DEFAULT_BRANDING } from "@/lib/branding/types";
+import { BrandingPreview } from "@/components/branding/BrandingPreview";
 import {
   registerSimulatedInstallation,
   runInstallationDryRun,
   saveInstallationWizardDraft,
+  verifyProviderConnections,
 } from "@/app/actions/installations";
 import { slugifyCompanyName } from "@/lib/installer/manifest";
+import { TIENDAPRO_AUTHORIZED_LINK_TARGETS } from "@/lib/installer/providers/authorized";
 import { Button } from "@/components/ui/Button";
 
 const STEPS = [
@@ -25,28 +29,40 @@ const STEPS = [
 
 type WizardState = {
   companyName: string;
+  brandName: string;
+  tagline: string;
   templateId: string;
   logoUrl: string;
+  faviconUrl: string;
   primaryColor: string;
+  secondaryColor: string;
   fontFamily: string;
+  contactEmail: string;
   modules: ModuleId[];
   primaryDomain: string;
   githubRepo: string;
   vercelProject: string;
   supabaseRef: string;
+  linksVerified: boolean;
 };
 
 const defaultState: WizardState = {
   companyName: "",
+  brandName: "",
+  tagline: "",
   templateId: "ecommerce-store-v1",
   logoUrl: "",
-  primaryColor: "#0860e8",
-  fontFamily: "system-ui",
+  faviconUrl: TIENDAPRO_DEFAULT_BRANDING.faviconUrl,
+  primaryColor: TIENDAPRO_DEFAULT_BRANDING.primaryColor,
+  secondaryColor: TIENDAPRO_DEFAULT_BRANDING.secondaryColor,
+  fontFamily: TIENDAPRO_DEFAULT_BRANDING.fontFamily,
+  contactEmail: "",
   modules: ["venta-online", "stock"],
   primaryDomain: "",
   githubRepo: "",
   vercelProject: "",
   supabaseRef: "",
+  linksVerified: false,
 };
 
 export function InstallationWizard({
@@ -64,6 +80,10 @@ export function InstallationWizard({
   const [draftId, setDraftId] = useState(initialDraftId ?? "");
   const [pending, startTransition] = useTransition();
   const [dryRunLog, setDryRunLog] = useState<string[]>([]);
+  const [linkLog, setLinkLog] = useState<string[]>([]);
+  const [tokenHints, setTokenHints] = useState<{ github: boolean; vercel: boolean; supabase: boolean } | null>(
+    null
+  );
   const [state, setState] = useState<WizardState>(() => ({
     ...defaultState,
     ...(initialPayload as Partial<WizardState>),
@@ -72,15 +92,20 @@ export function InstallationWizard({
   const payload = useMemo(
     () => ({
       ...state,
+      brandName: state.brandName || state.companyName,
       companySlug: slugifyCompanyName(state.companyName || "empresa"),
-      githubSimulated: true,
-      vercelSimulated: true,
-      supabaseSimulated: true,
+      githubSimulated: !state.linksVerified,
+      vercelSimulated: !state.linksVerified,
+      supabaseSimulated: !state.linksVerified,
+      githubConnected: state.linksVerified && Boolean(state.githubRepo),
+      vercelConnected: state.linksVerified && Boolean(state.vercelProject),
+      supabaseConnected: state.linksVerified && Boolean(state.supabaseRef),
     }),
     [state]
   );
 
   const selectedTemplate = templates.find((t) => t.templateId === state.templateId);
+  const previewPlatformMode = false;
 
   function persist(nextStep: number) {
     const fd = new FormData();
@@ -96,12 +121,28 @@ export function InstallationWizard({
 
   function runDryRun() {
     const fd = new FormData();
-    fd.set("payload", JSON.stringify(payload));
+    fd.set("payload", JSON.stringify({ ...payload, githubSimulated: true, vercelSimulated: true, supabaseSimulated: true }));
     if (draftId) fd.set("draft_id", draftId);
     startTransition(async () => {
       const res = await runInstallationDryRun(fd);
       if (res.result?.steps) {
         setDryRunLog(res.result.steps.map((s) => `${s.step}: ${s.message}`));
+      }
+    });
+  }
+
+  function verifyLinks() {
+    const fd = new FormData();
+    fd.set("payload", JSON.stringify(payload));
+    if (draftId) fd.set("draft_id", draftId);
+    startTransition(async () => {
+      const res = await verifyProviderConnections(fd);
+      setTokenHints(res.tokensConfigured);
+      if (res.steps) {
+        setLinkLog(res.steps.map((s) => `${s.step}: ${s.message}`));
+      }
+      if (res.ok && res.verifiedCount > 0) {
+        setState((s) => ({ ...s, linksVerified: true }));
       }
     });
   }
@@ -117,6 +158,26 @@ export function InstallationWizard({
 
   return (
     <div className="mx-auto max-w-3xl">
+      <div className="mb-6 rounded-lg border border-border bg-surface-muted px-4 py-3 text-sm text-text-secondary">
+        <p className="font-semibold text-foreground">Estado operativo</p>
+        <ul className="mt-2 list-inside list-disc space-y-1">
+          <li>
+            <strong>Branding runtime</strong> — operativo en la tienda (referencia TiendaPro vía BD / env).
+          </li>
+          <li>
+            <strong>Dry-run manifiesto</strong> — operativo (paso Vista previa).
+          </li>
+          <li>
+            <strong>Verificar vínculos GitHub/Vercel/Supabase</strong> — operativo si hay tokens{" "}
+            <code className="text-xs">INSTALLER_*</code> en el servidor; si no, informa omitido (no simula éxito).
+          </li>
+          <li>
+            <strong>Instalación cloud real</strong> — no operativa (requiere{" "}
+            <code className="text-xs">INSTALLER_ALLOW_PROVISION=1</code> y pasos pendientes).
+          </li>
+        </ul>
+      </div>
+
       <ol className="mb-8 flex flex-wrap gap-2">
         {STEPS.map((label, idx) => {
           const n = idx + 1;
@@ -144,6 +205,15 @@ export function InstallationWizard({
               onChange={(e) => setState({ ...state, companyName: e.target.value })}
               placeholder="Ej. Acme Retail"
             />
+            <label className="mt-4 block text-sm">
+              Nombre comercial (opcional)
+              <input
+                className="mt-1 w-full rounded-lg border border-border px-3 py-2"
+                value={state.brandName}
+                onChange={(e) => setState({ ...state, brandName: e.target.value })}
+                placeholder={state.companyName || "Marca visible en la tienda"}
+              />
+            </label>
           </>
         )}
         {step === 2 && (
@@ -178,19 +248,31 @@ export function InstallationWizard({
         )}
         {step === 3 && (
           <>
-            <h2 className="text-lg font-semibold text-foreground">Logo</h2>
-            <p className="mt-2 text-sm text-text-secondary">URL pública o ruta en Storage del cliente (config, no código).</p>
-            <input
-              className="mt-4 w-full rounded-lg border border-border px-3 py-2"
-              value={state.logoUrl}
-              onChange={(e) => setState({ ...state, logoUrl: e.target.value })}
-              placeholder="https://cdn.cliente.com/logo.png"
-            />
+            <h2 className="text-lg font-semibold text-foreground">Logo y favicon</h2>
+            <p className="mt-2 text-sm text-text-secondary">URL pública HTTPS o ruta estática del deploy.</p>
+            <label className="mt-4 block text-sm">
+              Logo
+              <input
+                className="mt-1 w-full rounded-lg border border-border px-3 py-2"
+                value={state.logoUrl}
+                onChange={(e) => setState({ ...state, logoUrl: e.target.value })}
+                placeholder="https://cdn.cliente.com/logo.png"
+              />
+            </label>
+            <label className="mt-3 block text-sm">
+              Favicon
+              <input
+                className="mt-1 w-full rounded-lg border border-border px-3 py-2"
+                value={state.faviconUrl}
+                onChange={(e) => setState({ ...state, faviconUrl: e.target.value })}
+                placeholder="/favicon.ico"
+              />
+            </label>
           </>
         )}
         {step === 4 && (
           <>
-            <h2 className="text-lg font-semibold text-foreground">Colores y tipografía</h2>
+            <h2 className="text-lg font-semibold text-foreground">Colores, tipografía y contacto</h2>
             <div className="mt-4 grid gap-4 sm:grid-cols-2">
               <label className="text-sm">
                 Color primario
@@ -202,11 +284,39 @@ export function InstallationWizard({
                 />
               </label>
               <label className="text-sm">
-                Tipografía
+                Color secundario
+                <input
+                  type="color"
+                  className="mt-1 h-10 w-full"
+                  value={state.secondaryColor}
+                  onChange={(e) => setState({ ...state, secondaryColor: e.target.value })}
+                />
+              </label>
+              <label className="text-sm sm:col-span-2">
+                Tagline
+                <input
+                  className="mt-1 w-full rounded-lg border border-border px-3 py-2"
+                  value={state.tagline}
+                  onChange={(e) => setState({ ...state, tagline: e.target.value })}
+                  placeholder="Tienda online"
+                />
+              </label>
+              <label className="text-sm sm:col-span-2">
+                Tipografía (CSS)
                 <input
                   className="mt-1 w-full rounded-lg border border-border px-3 py-2"
                   value={state.fontFamily}
                   onChange={(e) => setState({ ...state, fontFamily: e.target.value })}
+                />
+              </label>
+              <label className="text-sm sm:col-span-2">
+                Email de contacto
+                <input
+                  type="email"
+                  className="mt-1 w-full rounded-lg border border-border px-3 py-2"
+                  value={state.contactEmail}
+                  onChange={(e) => setState({ ...state, contactEmail: e.target.value })}
+                  placeholder="hola@cliente.com"
                 />
               </label>
             </div>
@@ -240,28 +350,46 @@ export function InstallationWizard({
           <>
             <h2 className="text-lg font-semibold text-foreground">GitHub · Vercel · Supabase</h2>
             <p className="mt-2 text-sm text-text-secondary">
-              Vinculación autorizada (OAuth futuro). En esta versión: metadatos simulados — sin tokens en servidor.
+              Vinculá recursos existentes. La verificación usa APIs oficiales con tokens solo en servidor. Para pruebas
+              TiendaPro, usá los recursos autorizados indicados abajo.
             </p>
             <div className="mt-4 space-y-3">
               <input
                 className="w-full rounded-lg border border-border px-3 py-2 text-sm"
                 placeholder="GitHub org/repo"
                 value={state.githubRepo}
-                onChange={(e) => setState({ ...state, githubRepo: e.target.value })}
+                onChange={(e) => setState({ ...state, githubRepo: e.target.value, linksVerified: false })}
               />
               <input
                 className="w-full rounded-lg border border-border px-3 py-2 text-sm"
                 placeholder="Proyecto Vercel"
                 value={state.vercelProject}
-                onChange={(e) => setState({ ...state, vercelProject: e.target.value })}
+                onChange={(e) => setState({ ...state, vercelProject: e.target.value, linksVerified: false })}
               />
               <input
                 className="w-full rounded-lg border border-border px-3 py-2 text-sm"
                 placeholder="Supabase project ref"
                 value={state.supabaseRef}
-                onChange={(e) => setState({ ...state, supabaseRef: e.target.value })}
+                onChange={(e) => setState({ ...state, supabaseRef: e.target.value, linksVerified: false })}
               />
             </div>
+            <p className="mt-3 text-xs text-muted">
+              Referencia TiendaPro: {TIENDAPRO_AUTHORIZED_LINK_TARGETS.githubRepo} · Vercel{" "}
+              {TIENDAPRO_AUTHORIZED_LINK_TARGETS.vercelProject} · Supabase{" "}
+              {TIENDAPRO_AUTHORIZED_LINK_TARGETS.supabaseProjectRef}
+            </p>
+            <Button type="button" className="mt-4" variant="outline" onClick={verifyLinks} disabled={pending}>
+              Verificar vínculos (real)
+            </Button>
+            {tokenHints ? (
+              <p className="mt-2 text-xs text-muted">
+                Tokens servidor: GitHub {tokenHints.github ? "✓" : "—"} · Vercel {tokenHints.vercel ? "✓" : "—"} ·
+                Supabase {tokenHints.supabase ? "✓" : "—"}
+              </p>
+            ) : null}
+            {linkLog.length ? (
+              <pre className="mt-3 max-h-40 overflow-auto rounded-lg bg-surface-muted p-3 text-xs">{linkLog.join("\n")}</pre>
+            ) : null}
           </>
         )}
         {step === 7 && (
@@ -273,25 +401,31 @@ export function InstallationWizard({
               onChange={(e) => setState({ ...state, primaryDomain: e.target.value })}
               placeholder="tienda.cliente.com"
             />
+            <p className="mt-2 text-xs text-muted">El DNS no se modifica desde Control hasta habilitar instalación real.</p>
           </>
         )}
         {step === 8 && (
           <>
             <h2 className="text-lg font-semibold text-foreground">Vista previa</h2>
-            <div
-              className="mt-4 rounded-xl border border-border p-6"
-              style={{ fontFamily: state.fontFamily, borderColor: state.primaryColor }}
-            >
-              {state.logoUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={state.logoUrl} alt="" className="mb-4 h-12 object-contain" />
-              ) : null}
-              <p className="text-xl font-bold" style={{ color: state.primaryColor }}>
-                {state.companyName || "Tu marca"}
-              </p>
-              <p className="text-sm text-text-secondary">{selectedTemplate?.name}</p>
-              <p className="mt-2 text-xs text-muted">{state.modules.join(" · ")}</p>
+            <div className="mt-4">
+              <BrandingPreview
+                input={{
+                  companyName: state.companyName,
+                  brandName: state.brandName || state.companyName,
+                  tagline: state.tagline,
+                  logoUrl: state.logoUrl,
+                  faviconUrl: state.faviconUrl,
+                  primaryColor: state.primaryColor,
+                  secondaryColor: state.secondaryColor,
+                  fontFamily: state.fontFamily,
+                  contactEmail: state.contactEmail,
+                }}
+                platformMode={previewPlatformMode}
+              />
             </div>
+            <p className="mt-3 text-sm text-text-secondary">
+              Plantilla: {selectedTemplate?.name} · {state.modules.join(" · ")}
+            </p>
             <Button type="button" className="mt-4" variant="outline" onClick={runDryRun} disabled={pending}>
               Validar manifiesto (dry-run)
             </Button>
@@ -302,13 +436,17 @@ export function InstallationWizard({
         )}
         {step === 9 && (
           <>
-            <h2 className="text-lg font-semibold text-foreground">Verificación e instalación</h2>
+            <h2 className="text-lg font-semibold text-foreground">Registro en Control</h2>
             <p className="mt-2 text-sm text-text-secondary">
-              Modo <strong>simulación</strong>: registra la instancia en Control sin crear proyectos cloud reales.
-              La app del cliente quedaría aislada cuando se ejecute el instalador real.
+              <strong>Operativo:</strong> registrar borrador / instancia con metadatos y{" "}
+              <code className="text-xs">branding_config</code> (sin deploy cloud).
+            </p>
+            <p className="mt-2 text-sm text-text-secondary">
+              <strong>No operativo:</strong> crear repo, Supabase aislado, deploy Vercel y DNS — bloqueados hasta
+              provisionamiento autorizado.
             </p>
             <Button type="button" className="mt-6" onClick={finish} disabled={pending || !state.companyName}>
-              Registrar instalación (simulada)
+              Registrar instalación en Control
             </Button>
           </>
         )}

@@ -1,0 +1,32 @@
+{
+  "id": "ecommerce-store-v1",
+  "version": "1.0.0",
+  "name": "Tienda ecommerce",
+  "description": "Plantilla desplegable independiente: catálogo, carrito, checkout, admin. Identidad y endpoints vía manifiesto de instalación.",
+  "independent": true,
+  "defaultModules": ["venta-online", "stock"],
+  "requiredEnv": [
+    "NEXT_PUBLIC_SUPABASE_URL",
+    "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "NEXT_PUBLIC_SITE_URL",
+    "STORE_BRANDING_JSON"
+  ],
+  "optionalEnv": [
+    "STORE_INDEPENDENT",
+    "TIENDAPRO_CHECKOUT_ENABLED",
+    "TIENDAPRO_CHECKOUT_PRODUCTION"
+  ],
+  "brandingFields": [
+    "brandName",
+    "tagline",
+    "logoUrl",
+    "faviconUrl",
+    "primaryColor",
+    "secondaryColor",
+    "fontFamily",
+    "contactEmail"
+  ],
+  "routes": ["/productos", "/carrito", "/checkout", "/admin", "/login", "/registro"],
+  "notes": "No depende de TiendaPro Control en runtime cuando STORE_INDEPENDENT=1."
+}

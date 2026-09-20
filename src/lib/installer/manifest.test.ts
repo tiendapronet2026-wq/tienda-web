@@ -17,7 +17,7 @@ describe("installation manifest", () => {
     ).toEqual([]);
   });
 
-  it("dry-run pipeline completo simulado", () => {
+  it("dry-run pipeline completo simulado", async () => {
     const manifest = buildManifestFromWizardPayload(
       {
         companyName: "Empresa Demo Ficticia",
@@ -30,7 +30,7 @@ describe("installation manifest", () => {
       },
       { dryRun: true }
     );
-    const result = runInstallationPipeline(manifest);
+    const result = await runInstallationPipeline(manifest);
     expect(result.ok).toBe(true);
     expect(result.dryRun).toBe(true);
     expect(result.steps.some((s) => s.step === "deploy" && s.status === "simulated")).toBe(true);

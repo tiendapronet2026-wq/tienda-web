@@ -17,7 +17,7 @@ export default async function NuevaInstalacionPage() {
       </Link>
       <PageTitle
         title="Asistente de nueva instalación"
-        description="Personalizá marca, módulos y recursos. Guardá borrador en cualquier paso. La instalación cloud real requiere cuentas autorizadas; por ahora dry-run y registro simulado."
+        description="Personalizá marca, módulos y recursos. Branding y dry-run operativos; vínculos reales con tokens INSTALLER_* en servidor; provisionamiento cloud bloqueado por defecto."
       />
       <InstallationWizard
         templates={templates}

@@ -1,13 +1,15 @@
 import Image from "next/image";
 import Link from "next/link";
+import type { StoreBrandingConfig } from "@/lib/branding/types";
+import { BrandWordmark } from "@/components/branding/BrandWordmark";
 
 type BrandLogoProps = {
   href?: string | null;
-  /** light = icono + wordmark CSS (fondos claros). dark = logo horizontal completo. mark = solo isotipo */
   variant?: "light" | "dark" | "mark";
   size?: "sm" | "md" | "lg";
   className?: string;
   priority?: boolean;
+  branding?: StoreBrandingConfig;
 };
 
 const markSize = {
@@ -22,14 +24,17 @@ export function BrandLogo({
   size = "md",
   className = "",
   priority = false,
+  branding,
 }: BrandLogoProps) {
   const mark = markSize[size];
+  const logoSrc = branding?.logoUrl ?? "/brand/icons/logo-tiendapro-icon.png";
+  const label = branding?.brandName ?? "TiendaPro";
 
   const content =
     variant === "dark" ? (
       <Image
         src="/brand/logos/logo-tiendapro-horizontal.png"
-        alt="TiendaPro"
+        alt={label}
         width={200}
         height={56}
         className="h-9 w-auto sm:h-10"
@@ -37,26 +42,32 @@ export function BrandLogo({
       />
     ) : variant === "mark" ? (
       <Image
-        src="/brand/icons/logo-tiendapro-icon.png"
-        alt="TiendaPro"
+        src={logoSrc}
+        alt={label}
         width={mark.px}
         height={mark.px}
         className={mark.box}
         priority={priority}
+        unoptimized={logoSrc.startsWith("http")}
       />
     ) : (
       <span className="flex items-center gap-2.5">
         <Image
-          src="/brand/icons/logo-tiendapro-icon.png"
+          src={logoSrc}
           alt=""
           width={40}
           height={40}
           className="h-9 w-9 sm:h-10 sm:w-10"
           priority={priority}
+          unoptimized={logoSrc.startsWith("http")}
         />
-        <span className="text-xl font-extrabold tracking-tight text-foreground sm:text-[1.35rem]">
-          Tienda<span className="text-brand">Pro</span>
-        </span>
+        {branding ? (
+          <BrandWordmark branding={branding} />
+        ) : (
+          <span className="text-xl font-extrabold tracking-tight text-foreground sm:text-[1.35rem]">
+            Tienda<span className="text-brand">Pro</span>
+          </span>
+        )}
       </span>
     );
 
@@ -65,7 +76,7 @@ export function BrandLogo({
   }
 
   return (
-    <Link href={href} className={`inline-flex items-center ${className}`} aria-label="TiendaPro inicio">
+    <Link href={href} className={`inline-flex items-center ${className}`} aria-label={`${label} inicio`}>
       {content}
     </Link>
   );
