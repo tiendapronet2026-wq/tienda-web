@@ -24,11 +24,12 @@ En **Authentication → URL Configuration** del proyecto `dnptsudsxrcamtxfiszh`,
 - Site URL (o usar `NEXT_PUBLIC_SITE_URL` coherente)
 - Redirect URLs: `{NEXT_PUBLIC_SITE_URL}/login`, `{NEXT_PUBLIC_SITE_URL}/actualizar-password`, etc.
 
+### Site URL (Supabase Auth)
+
+**Valor oficial aplicado:** `https://www.tiendapro.net` (antes `http://localhost:3000` / `http://127.0.0.1:3000` en proyecto).  
+Cambio aplicado con `supabase config push` **solo** en `auth.site_url` (sin tocar Storage/Vector ni allow list).
+
 ### Redirect URLs Preview (Supabase Auth allow list)
-
-**Site URL (proyecto Supabase):** permanece `http://localhost:3000`. La alineación con **`https://www.tiendapro.net`** para producción queda **pendiente de autorización específica** — no modificar hasta entonces.
-
-**Allow list activa (Preview `tienda-web` + alias de rama):**
 
 - `https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/login`
 - `https://tienda-web-git-cursor-tien-2a36fa-tiendapronet2026-wqs-projects.vercel.app/actualizar-password`
