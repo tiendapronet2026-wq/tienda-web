@@ -6,6 +6,19 @@ import type { SessionPlatformContext } from "@/lib/platform/rls-helpers";
 
 export const PRIVATE_PANEL_PREFIXES = ["/control", "/app"] as const;
 
+/** Rutas tienda (checkout) permitidas en redirect post-login. */
+export const STORE_REDIRECT_PREFIXES = [
+  "/productos",
+  "/carrito",
+  "/checkout",
+  "/admin",
+  "/cotizacion",
+] as const;
+
+export function isStoreRedirectPath(pathname: string): boolean {
+  return STORE_REDIRECT_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
+
 export function isPrivatePanelPath(pathname: string): boolean {
   return PRIVATE_PANEL_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
 }
@@ -21,7 +34,9 @@ export function isAppPanelPath(pathname: string): boolean {
 export function safeRedirectPath(value: string | null): string | null {
   if (!value || !value.startsWith("/")) return null;
   if (value.startsWith("//")) return null;
-  if (!isPrivatePanelPath(value) && !value.startsWith("/mi-cuenta")) return null;
+  if (value.startsWith("/mi-cuenta")) return value;
+  if (isStoreRedirectPath(value)) return value;
+  if (!isPrivatePanelPath(value)) return null;
   return value;
 }
 
@@ -68,10 +83,16 @@ export function resolvePostLoginRedirect({
 }
 
 export function sanitizeSignInRedirect(redirectTo: string, ctx: SessionPlatformContext, enforce: boolean): string {
-  const safe = safeRedirectPath(redirectTo) ?? "/app";
-  if (!enforce) return safe;
-  if (isPrivatePanelPath(safe) && !canAccessPrivatePath(ctx, safe)) {
+  const safe = safeRedirectPath(redirectTo);
+  if (safe) {
+    if (!enforce || !isPrivatePanelPath(safe)) return safe;
+    if (canAccessPrivatePath(ctx, safe)) return safe;
     return "/acceso-denegado";
   }
-  return safe;
+  if (!enforce) return "/mi-cuenta";
+  return resolvePostLoginRedirect({
+    ctx,
+    redirectParam: null,
+    enforcePlatformAuthorization: true,
+  });
 }

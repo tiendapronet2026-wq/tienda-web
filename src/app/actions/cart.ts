@@ -54,10 +54,7 @@ async function validateProductForCart(supabase: ReturnType<typeof createAdminCli
 
 export async function addToCart(productId: string) {
   const { supabase, userId, sessionId } = await getCartClientForMutation();
-  const product = await validateProductForCart(
-    userId ? createAdminClient() : supabase,
-    productId
-  );
+  const product = await validateProductForCart(supabase, productId);
 
   const { data: existing } = await (userId
     ? supabase
@@ -85,8 +82,12 @@ export async function addToCart(productId: string) {
   if (existing) {
     await supabase.from("cart_items").update({ quantity: nextQuantity }).eq("id", existing.id);
   } else {
+    const cartSessionKey = sessionId ?? userId;
+    if (!cartSessionKey) {
+      throw new Error("No se pudo identificar la sesión del carrito.");
+    }
     await supabase.from("cart_items").insert({
-      session_id: sessionId,
+      session_id: cartSessionKey,
       product_id: productId,
       quantity: 1,
       user_id: userId,

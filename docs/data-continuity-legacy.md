@@ -1,5 +1,11 @@
 # Continuidad de datos — Supabase legacy
 
+## Etapa comercial nueva (base `dnptsudsxrcamtxfiszh`)
+
+Los pedidos y clientes a partir del despliegue checkout (2026-09-20) inician **historial comercial nuevo**. La migración aditiva desde legacy `lwenyboejvwuopsenrwx` queda **pendiente en track independiente** (sin acceso del propietario a la cuenta legacy). Importador preparado: `scripts/import-legacy-store-data.mjs` (`--dry-run` primero).
+
+**Checkout producción:** permanece cerrado hasta decisión explícita (`TIENDAPRO_CHECKOUT_PRODUCTION=1`) y/o continuidad histórica acordada.
+
 ## Estado verificado (2026-09-20)
 
 | Proyecto | Ref | Acceso CLI (cuenta TiendaPro) |
@@ -21,11 +27,6 @@ Producción operó contra el ref legacy hasta el cambio de env; **no fue posible
 2. **Auth:** export/import vía Dashboard o bulk import; contraseñas **no** migrables — recuperación oficial (`/recuperar-password`).
 3. Conciliar conteos orders/products antes de desactivar checkout.
 
-## Acción humana imprescindible (única)
+## Acción futura (legacy, fuera del alcance operativo actual)
 
-En [Supabase Dashboard](https://supabase.com/dashboard), con la **cuenta propietaria del proyecto `lwenyboejvwuopsenrwx`**:
-
-1. **Project Settings → Team** (preferido): invitar a la cuenta de la org TiendaPro (`tiendapronet2026-wq`) como **Developer** o **Administrator** — **sin transferir ownership**.
-2. **Alternativa:** export **Database backup** + **Auth users** y ejecutar `scripts/import-legacy-store-data.mjs --dry-run` antes de importar.
-
-Sin invitación o export, no es posible conciliar usuarios/pedidos históricos.
+La recuperación del proyecto legacy depende de acceso futuro del propietario a `lwenyboejvwuopsenrwx` (invitación org o export). **No bloquea** pruebas checkout en Preview ni operación admin en la base nueva.
