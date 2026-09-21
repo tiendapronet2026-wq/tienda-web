@@ -6,7 +6,7 @@ import { mockTasks } from "@/lib/mock/panel-data";
 import { loadBridgeProjects, loadBridgeTasksForPanel } from "@/lib/bridge/repository";
 import { BRIDGE_PILOT_PROJECT_SLUG } from "@/lib/bridge/constants";
 import { isExplicitDevMockMode, isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
-import { isBridgeApiConfigured } from "@/lib/bridge/api-auth";
+import { getBridgeApiConfigStatus, isBridgeApiConfigured, BRIDGE_API_SECRET_MIN_LENGTH } from "@/lib/bridge/api-auth";
 
 export default async function ControlTareasPage() {
   const mockMode = isExplicitDevMockMode();
@@ -15,6 +15,7 @@ export default async function ControlTareasPage() {
     ? await Promise.all([loadBridgeTasksForPanel(30), loadBridgeProjects()])
     : [[], []];
   const pilot = projects.find((p) => p.slug === BRIDGE_PILOT_PROJECT_SLUG);
+  const bridgeConfigStatus = getBridgeApiConfigStatus();
 
   return (
     <>
@@ -41,7 +42,11 @@ export default async function ControlTareasPage() {
           <div className="mt-4 rounded-lg border border-brand/30 bg-brand-soft px-4 py-3 text-sm text-brand">
             Piloto: <strong>TiendaPro</strong> — repo {`tiendapronet2026-wq/tienda-web`}, Supabase{" "}
             <code className="text-xs">dnptsudsxrcamtxfiszh</code>. API bridge:{" "}
-            {isBridgeApiConfigured() ? "activa (BRIDGE_API_SECRET)" : "inactiva — configurar secret en Vercel"}
+            {isBridgeApiConfigured()
+              ? "activa (BRIDGE_API_SECRET)"
+              : bridgeConfigStatus === "too_short"
+                ? `inactiva — BRIDGE_API_SECRET demasiado corto (mín. ${BRIDGE_API_SECRET_MIN_LENGTH} caracteres en Vercel Production)`
+                : "inactiva — falta BRIDGE_API_SECRET en Vercel Production (proyecto tienda-web)"}
           </div>
 
           {pilot && !pilot.circuit_validated ? (

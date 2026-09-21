@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assertBridgeResourcesMatchProject } from "@/lib/bridge/validate-resources";
-import { verifyBridgeApiSecret } from "@/lib/bridge/api-auth";
+import { verifyBridgeApiSecret, getBridgeApiConfigStatus, isBridgeApiConfigured } from "@/lib/bridge/api-auth";
 import {
   canAcceptExternalResult,
   normalizeExternalRiskClass,
@@ -94,6 +94,16 @@ describe("bridge api-auth", () => {
     process.env.BRIDGE_API_SECRET = "test-secret-bridge-api-key-32chars";
     expect(verifyBridgeApiSecret("test-secret-bridge-api-key-32chars")).toBe(true);
     expect(verifyBridgeApiSecret("wrong")).toBe(false);
+    delete process.env.BRIDGE_API_SECRET;
+  });
+
+  it("getBridgeApiConfigStatus distingue missing y too_short", () => {
+    delete process.env.BRIDGE_API_SECRET;
+    expect(getBridgeApiConfigStatus()).toBe("missing");
+    process.env.BRIDGE_API_SECRET = "short-secret";
+    expect(getBridgeApiConfigStatus()).toBe("too_short");
+    process.env.BRIDGE_API_SECRET = "test-secret-bridge-api-key-32chars";
+    expect(getBridgeApiConfigStatus()).toBe("ok");
     delete process.env.BRIDGE_API_SECRET;
   });
 });
