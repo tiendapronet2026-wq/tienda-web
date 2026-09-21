@@ -16,6 +16,7 @@ out/
 
 # supabase
 supabase/.temp/
+supabase/.branches/
 
 # misc
 *.log
