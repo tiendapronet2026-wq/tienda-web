@@ -69,6 +69,39 @@ paths:
           description: Detalle e informe cuando completed
         "404":
           description: No encontrada
+  /api/bridge/v1/tasks/{id}/result:
+    post:
+      operationId: submitBridgeTaskResult
+      summary: Registrar informe (comentario en pr_url si GITHUB_BRIDGE_TOKEN en servidor)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                summary:
+                  type: string
+                pr_url:
+                  type: string
+                files_changed:
+                  type: array
+                  items:
+                    type: string
+                pending:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Puede incluir github_report_comment_url
 components:
   securitySchemes:
     BridgeBearer:
