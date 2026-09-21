@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { assertBridgeResourcesMatchProject } from "@/lib/bridge/validate-resources";
-import { verifyBridgeApiSecret, getBridgeApiConfigStatus, isBridgeApiConfigured } from "@/lib/bridge/api-auth";
+import { verifyBridgeApiSecret, getBridgeApiConfigStatus } from "@/lib/bridge/api-auth";
 import {
   canAcceptExternalResult,
   normalizeExternalRiskClass,

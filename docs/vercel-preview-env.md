@@ -67,5 +67,7 @@ Variables en Vercel **Production** (2026-09-20):
 | `SUPABASE_SERVICE_ROLE_KEY` | Secret server-only |
 | `NEXT_PUBLIC_SITE_URL` | `https://www.tiendapro.net` |
 | `TIENDAPRO_PLATFORM_DB` | `1` (catálogo + plataforma en mismo proyecto) |
+| `BRIDGE_API_SECRET` | Secret server-only (≥24 chars). Bearer para `/api/bridge/v1/*` y Custom GPT Actions |
+| `GITHUB_BRIDGE_TOKEN` | Opcional: PAT fine-grained `issues:write` en `tiendapronet2026-wq/tienda-web` para despacho real (sin token → despacho simulado) |
 
 Redirect URLs oficiales en Supabase Auth: ver `supabase/config.toml` (`www.tiendapro.net` + Preview).
