@@ -66,6 +66,18 @@ export default async function TareaDetallePage({ params }: { params: Promise<{ i
       {Object.keys(report).length ? (
         <section className="mt-8 rounded-xl border border-border bg-surface-muted p-5">
           <h2 className="text-lg font-semibold">Informe final</h2>
+          {report.githubReportCommentUrl ? (
+            <p className="mt-2 text-sm">
+              <a
+                href={String(report.githubReportCommentUrl)}
+                className="font-medium text-brand hover:underline"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                Ver informe en GitHub (comentario del PR)
+              </a>
+            </p>
+          ) : null}
           <pre className="mt-3 overflow-auto text-xs">{JSON.stringify(report, null, 2)}</pre>
         </section>
       ) : null}

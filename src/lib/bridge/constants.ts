@@ -35,7 +35,10 @@ export type BridgeTaskResultReport = {
   deployUrl?: string | null;
   errors?: string[];
   nextAction?: string | null;
+  pendingItems?: string[];
   simulated?: boolean;
   trustLevel?: "owner_verified" | "external_unverified";
   testsVerified?: boolean;
+  githubReportCommentUrl?: string | null;
+  githubReportDeliveryError?: string | null;
 };

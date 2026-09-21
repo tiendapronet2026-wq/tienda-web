@@ -74,6 +74,11 @@ export function sanitizeExternalBridgeResult(
     deployUrl: body.deploy_url ? String(body.deploy_url) : body.deployUrl ? String(body.deployUrl) : null,
     errors: Array.isArray(body.errors) ? body.errors.map(String) : [],
     nextAction: body.next_action ? String(body.next_action) : body.nextAction ? String(body.nextAction) : null,
+    pendingItems: Array.isArray(body.pending)
+      ? body.pending.map(String)
+      : Array.isArray(body.pendientes)
+        ? body.pendientes.map(String)
+        : [],
     simulated: Boolean(body.simulated),
     trustLevel: "external_unverified",
     testsVerified: false,

@@ -29,5 +29,10 @@ export async function POST(request: Request, { params }: Params) {
     return NextResponse.json({ ok: false, error: result.error }, { status: result.status ?? 400 });
   }
 
-  return NextResponse.json({ ok: true, task_id: id, status: result.status });
+  return NextResponse.json({
+    ok: true,
+    task_id: id,
+    status: result.status,
+    github_report_comment_url: result.github_report_comment_url ?? null,
+  });
 }
