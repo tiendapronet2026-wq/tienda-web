@@ -39,14 +39,15 @@
 
 ## 2. Qué funciona realmente (producción)
 
-<!-- EVIDENCE_SECTION: actualizar tras verificación automatizada -->
+**Verificado el 2026-09-21** tras merge PR #13, rotación de `BRIDGE_API_SECRET` (longitud válida) y **un** deploy Production.
 
 | Capacidad | Estado |
 |-----------|--------|
 | SQL puente en Supabase `dnptsudsxrcamtxfiszh` | Operativo (según operador) |
 | `/control/tareas` creación UI | Operativo |
-| API `GET/POST /api/bridge/v1/tasks` con Bearer | Ver sección **Pruebas** y **Estado producción** |
-| Cartel “API bridge: activa” | Depende de `BRIDGE_API_SECRET` válido (≥24 chars) en runtime |
+| API `GET/POST /api/bridge/v1/tasks` con Bearer | **Operativo** (401 sin auth, 200 con Bearer válido) |
+| Cartel “API bridge: activa” | **Operativo** tras redeploy con secret ≥24 chars |
+| OpenAPI público `/bridge/openapi.yaml` | **200 OK** |
 | Despacho issue GitHub real | **Pendiente** sin `GITHUB_BRIDGE_TOKEN` en Production |
 | Auto-aprobación modo C vía API | **No** (tareas API → `pending_approval`) |
 | `circuit_validated` | **false** hasta E2E completo con aprobación owner |
@@ -65,29 +66,36 @@
 
 ## 4. Pruebas realizadas
 
-<!-- EVIDENCE_SECTION -->
+**Comando (2026-09-21, producción `www.tiendapro.net`):**
 
-Script: `node scripts/bridge-verify-production.mjs` con `BRIDGE_DEMO_BASE_URL=https://www.tiendapro.net`.
+```bash
+BRIDGE_DEMO_BASE_URL=https://www.tiendapro.net BRIDGE_API_SECRET=<desde Vercel Production> node scripts/bridge-verify-production.mjs
+```
 
-| Prueba | Resultado esperado |
-|--------|-------------------|
-| `GET /api/bridge/v1/tasks` sin auth | **401** |
-| `GET` con Bearer incorrecto | **401** |
-| `GET` con Bearer válido | **200**, `ok: true` |
-| `POST` crear tarea | **200**, `status: pending_approval` |
-| `GET` por id | **200**, historial |
-| `POST .../result` antes de despacho | **409** (no sustituye aprobación) |
-| `GET /bridge/openapi.yaml` | **200** |
+**Resultado ejecutado por Cursor Cloud Agent (sin imprimir el secret):**
 
-*(Los resultados PASS/FAIL concretos se registran en el commit que ejecuta la verificación post-deploy.)*
+| Prueba | Resultado |
+|--------|-----------|
+| `GET /api/bridge/v1/tasks` sin auth | **PASS** → HTTP **401** |
+| `GET` con Bearer incorrecto | **PASS** → HTTP **401** |
+| `GET` con Bearer válido | **PASS** → HTTP **200**, `ok: true` |
+| `POST` crear tarea | **PASS** → HTTP **200**, `status: pending_approval` |
+| `GET` por id | **PASS** → HTTP **200** |
+| `POST .../result` antes de despacho | **PASS** → HTTP **409** |
+| `GET /bridge/openapi.yaml` | **PASS** → HTTP **200** |
+
+**Causa raíz del bloqueo previo (503 / cartel inactivo):** el valor de `BRIDGE_API_SECRET` en Vercel **no cumplía** `isBridgeApiConfigured()` (ausente, vacío o **&lt;24 caracteres**). Se **rotó** a un secret de 64 caracteres hex y se redeployó Production **una vez**. No se publica el valor en GitHub ni en este informe.
+
+**No se simuló** ejecución de Cursor ni se declaró E2E PASS del circuito completo (falta aprobar/despachar + trabajo real + `POST .../result` tras despacho).
 
 ---
 
 ## 5. Estado de producción
 
 - **Dominio:** `www.tiendapro.net` → proyecto Vercel **tienda-web** (equipo tiendapronet2026-wqs-projects).
-- **Código puente:** merge PR #12+ (hardening) en `master`.
-- **`BRIDGE_API_SECRET`:** variable Production en Vercel; debe cumplir **≥24 caracteres**. Si la API responde **503** con `config_status: too_short` o `missing`, corregir valor y **Redeploy Production** (un solo redeploy agrupado tras cambios).
+- **Código:** `master` incluye PR #12 (hardening) + PR #13 (OpenAPI + informe + verify).
+- **`BRIDGE_API_SECRET`:** presente en Production; **rotado 2026-09-21** (≥24 chars). La API anónima responde **401** (no 503).
+- **Acción requerida tras rotación:** actualizar **una vez** la API Key del Custom GPT para que coincida con el valor actual en Vercel (Settings → Environment Variables → Production → `BRIDGE_API_SECRET` → reveal/copy **solo en tu sesión**, no en chat).
 
 ---
 
@@ -132,10 +140,11 @@ Script: `node scripts/bridge-verify-production.mjs` con `BRIDGE_DEMO_BASE_URL=ht
 
 ## 8. Bloqueos conocidos (transparencia)
 
-- **503 Bridge API:** secret ausente o &lt;24 chars en runtime → rotar en Vercel y redeploy.
-- **Despacho simulado:** falta `GITHUB_BRIDGE_TOKEN` en Production.
-- **No se declara E2E PASS** ni `circuit_validated=true` hasta prueba real con aprobación owner y resultado verificado en panel.
+- **Custom GPT desincronizado:** si el GPT guarda el secret anterior, las Actions fallarán con 401 hasta actualizar la clave en el GPT.
+- **Despacho simulado:** falta `GITHUB_BRIDGE_TOKEN` en Production (PAT `issues:write` en `tiendapronet2026-wq/tienda-web`).
+- **E2E humano/owner:** aprobar y despachar en `/control/tareas` sigue siendo obligatorio antes de que Cursor registre resultado.
+- **No se declara E2E PASS** ni `circuit_validated=true` hasta prueba real completa.
 
 ---
 
-*Última actualización: generado en el commit de automatización del puente (Cursor Cloud Agent).*
+*Última actualización: 2026-09-21 — PR #13 mergeado, verificación `bridge-verify-production.mjs` PASS en producción.*
