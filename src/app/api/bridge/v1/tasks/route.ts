@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
-import { getBridgeApiAuthHeader, isBridgeApiConfigured, verifyBridgeApiSecret } from "@/lib/bridge/api-auth";
+import {
+  getBridgeApiAuthHeader,
+  getBridgeApiConfigStatus,
+  isBridgeApiConfigured,
+  verifyBridgeApiSecret,
+  BRIDGE_API_SECRET_MIN_LENGTH,
+} from "@/lib/bridge/api-auth";
 import { BRIDGE_PILOT_PROJECT_SLUG } from "@/lib/bridge/constants";
 import { createBridgeTaskRecord } from "@/lib/bridge/create-task";
 import { normalizeExternalRiskClass } from "@/lib/bridge/register-result";
@@ -11,8 +17,14 @@ function unauthorized() {
 }
 
 function bridgeDisabled() {
+  const configStatus = getBridgeApiConfigStatus();
   return NextResponse.json(
-    { ok: false, error: "Bridge API no configurada (BRIDGE_API_SECRET)" },
+    {
+      ok: false,
+      error: "Bridge API no configurada (BRIDGE_API_SECRET)",
+      config_status: configStatus,
+      min_secret_length: configStatus === "too_short" ? BRIDGE_API_SECRET_MIN_LENGTH : undefined,
+    },
     { status: 503 }
   );
 }

@@ -1,8 +1,19 @@
 import { timingSafeEqual } from "node:crypto";
 
-export function isBridgeApiConfigured(): boolean {
+/** Mínimo de caracteres del secret (sin exponer el valor). */
+export const BRIDGE_API_SECRET_MIN_LENGTH = 24;
+
+export type BridgeApiConfigStatus = "ok" | "missing" | "too_short";
+
+export function getBridgeApiConfigStatus(): BridgeApiConfigStatus {
   const secret = process.env.BRIDGE_API_SECRET?.trim();
-  return Boolean(secret && secret.length >= 24);
+  if (!secret) return "missing";
+  if (secret.length < BRIDGE_API_SECRET_MIN_LENGTH) return "too_short";
+  return "ok";
+}
+
+export function isBridgeApiConfigured(): boolean {
+  return getBridgeApiConfigStatus() === "ok";
 }
 
 export function verifyBridgeApiSecret(provided: string | null | undefined): boolean {

@@ -1,0 +1,77 @@
+openapi: 3.1.0
+info:
+  title: TiendaPro Bridge API v1
+  version: "1.0.0"
+  description: |
+    Puente operativo TiendaPro (solo proyecto dnptsudsxrcamtxfiszh / tienda-web).
+    Informe de automatización (leer en GitHub):
+    https://github.com/tiendapronet2026-wq/tienda-web/blob/master/docs/bridge/INFORME_FINAL_AUTOMATIZACION.md
+servers:
+  - url: https://www.tiendapro.net
+security:
+  - BridgeBearer: []
+paths:
+  /api/bridge/v1/tasks:
+    get:
+      operationId: listBridgeTasks
+      summary: Listar tareas del puente
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            maximum: 100
+            default: 20
+      responses:
+        "200":
+          description: Lista de tareas
+        "401":
+          description: Bearer inválido
+        "503":
+          description: Bridge no configurado en servidor
+    post:
+      operationId: createBridgeTask
+      summary: Crear tarea (requiere aprobación owner antes de despacho)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [instruction]
+              properties:
+                title:
+                  type: string
+                instruction:
+                  type: string
+                project_slug:
+                  type: string
+                  default: tiendapro
+                risk_class:
+                  type: string
+                  description: Ignorado como minor desde API; se trata como critical
+      responses:
+        "200":
+          description: Tarea creada (status pending_approval)
+  /api/bridge/v1/tasks/{id}:
+    get:
+      operationId: getBridgeTask
+      summary: Estado, historial e informe (result_report)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: Detalle e informe cuando completed
+        "404":
+          description: No encontrada
+components:
+  securitySchemes:
+    BridgeBearer:
+      type: http
+      scheme: bearer
+      description: Mismo valor que BRIDGE_API_SECRET en Vercel (Production, tienda-web)
