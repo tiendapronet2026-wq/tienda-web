@@ -145,6 +145,27 @@ BRIDGE_DEMO_BASE_URL=https://www.tiendapro.net BRIDGE_API_SECRET=<desde Vercel P
 - **E2E humano/owner:** aprobar y despachar en `/control/tareas` sigue siendo obligatorio antes de que Cursor registre resultado.
 - **No se declara E2E PASS** ni `circuit_validated=true` hasta prueba real completa.
 
+## 9. Entrega automática de informes en GitHub (PR)
+
+Al registrar resultado (`POST /api/bridge/v1/tasks/{id}/result`) con `pr_url` apuntando a un PR de **`tiendapronet2026-wq/tienda-web`**, el servidor:
+
+1. Guarda el informe en **`result_report`** (panel `/control/tareas/{id}`).
+2. Publica un **comentario en el PR** (Markdown: estado, cambios, pruebas, despliegue, pendientes) con redacción de secretos.
+3. Devuelve `github_report_comment_url` en la respuesta JSON.
+
+**Requisito Vercel Production:** `GITHUB_BRIDGE_TOKEN` (PAT fine-grained o classic con **`issues: write`** / comentarios en PR del repo `tienda-web`). Sin token, el informe queda en el panel y `githubReportDeliveryError` indica el motivo.
+
+**Prueba E2E (operador):**
+
+```bash
+# Tarea en status dispatched o running
+BRIDGE_E2E_TASK_ID=<uuid> BRIDGE_API_SECRET=<desde Vercel> GITHUB_BRIDGE_TOKEN=<PAT> \\
+  node scripts/bridge-e2e-pr-comment.mjs
+```
+
+OpenAPI: incluir `pr_url`, `pending` / `pendientes` en el body de resultado.
+
 ---
 
-*Última actualización: 2026-09-21 — PR #13 mergeado, verificación `bridge-verify-production.mjs` PASS en producción.*
+*Última actualización: 2026-09-21 — entrega automática de informes en comentarios de PR.*
+
