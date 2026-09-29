@@ -4,6 +4,7 @@ import { mmControlConfigured, mmControlFetch } from "@/lib/mm-control/server";
 
 const tabs = [
   { href: "/control/mm/proyectos/casa-leon", label: "Resumen" },
+  { href: "/control/mm/proyectos/casa-leon/inteligencia", label: "Inteligencia" },
   { href: "/control/mm/proyectos/casa-leon/diagnostico", label: "Diagnóstico" },
 ];
 
@@ -53,12 +54,14 @@ export default async function CasaLeonProjectPage() {
         {progress ? (
           <p className="mt-2">Activación: {progress.passed}/{progress.total} condiciones cumplidas.</p>
         ) : null}
-        <Link
-          href="/control/mm/proyectos/casa-leon/diagnostico"
-          className="mt-4 inline-block font-medium text-amber-400"
-        >
-          Ir a diagnóstico →
-        </Link>
+        <div className="mt-4 flex flex-wrap gap-4">
+          <Link href="/control/mm/proyectos/casa-leon/inteligencia" className="font-medium text-amber-400">
+            Inteligencia operativa →
+          </Link>
+          <Link href="/control/mm/proyectos/casa-leon/diagnostico" className="font-medium text-amber-400">
+            Diagnóstico →
+          </Link>
+        </div>
       </section>
     </div>
   );
