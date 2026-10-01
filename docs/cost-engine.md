@@ -7,6 +7,7 @@ errores de coma flotante.
 ## Fórmulas
 
 - Material: `costo unitario × cantidad consumida`.
+- BOM producto (Gate 2): `SUM(cantidad BOM × materials.current_cost)` — ver `calculate_product_material_cost` (SQL) y `calculateProductMaterialCost` (TS).
 - Merma: `costo × (1 + porcentaje / 100)`.
 - Máquina: `costo total por hora × minutos / 60`.
 - Energía: `(potencia W / 1.000) × precio kWh`.
