@@ -128,4 +128,4 @@ Mismo patrón de timestamp que Gate 3A (`20261001192905` remoto vs `202610021800
 
 ## Siguiente gate
 
-**Gate 3C+** (canales, comisiones, automatización) — **no iniciado**.
+**Gate 3C** (rentabilidad por canal) — ver `docs/pricing-channel-g3c.md`.

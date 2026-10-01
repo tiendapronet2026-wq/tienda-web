@@ -12,6 +12,10 @@ import {
   type ProductPricingRpc,
 } from "@/components/admin/ProductPricingSection";
 import {
+  ProductChannelProfitabilitySection,
+} from "@/components/admin/ProductChannelProfitabilitySection";
+import type { ChannelProfileRow } from "@/components/admin/ChannelProfileForm";
+import {
   ProductProcessSection,
   type ProcessResourceRow,
   type ProcessStepRow,
@@ -104,6 +108,7 @@ export default async function EditProductPage({
     rpcProduction,
     rpcPricing,
     { data: pricingHistory },
+    { data: channelProfiles },
   ] = await Promise.all([
     supabase.from("products").select("*").eq("id", id).maybeSingle<Product>(),
     supabase.from("categories").select("id, name").order("name"),
@@ -141,6 +146,11 @@ export default async function EditProductPage({
       .eq("product_id", id)
       .order("created_at", { ascending: false })
       .limit(30),
+    supabase
+      .from("channel_cost_profiles")
+      .select("*")
+      .eq("is_active", true)
+      .order("name"),
   ]);
 
   if (!product) notFound();
@@ -161,6 +171,19 @@ export default async function EditProductPage({
   });
 
   const bomCurrency = normalizedBomLines[0]?.materials.currency ?? "ARS";
+
+  const normalizedProfiles: ChannelProfileRow[] = (channelProfiles ?? []).map((r) => ({
+    id: r.id,
+    name: r.name,
+    code: r.code,
+    channel_fee_percent: Number(r.channel_fee_percent),
+    payment_fee_percent: Number(r.payment_fee_percent),
+    fixed_fee_per_order: Number(r.fixed_fee_per_order),
+    shipping_absorbed_per_order: Number(r.shipping_absorbed_per_order),
+    other_cost_per_order: Number(r.other_cost_per_order),
+    default_units_per_order: Number(r.default_units_per_order),
+    is_active: r.is_active,
+  }));
 
   const normalizedSteps: ProcessStepRow[] = (processSteps ?? []).map((row) => {
     const resources = (row.product_process_resources ?? []) as unknown[];
@@ -225,6 +248,13 @@ export default async function EditProductPage({
           currency={bomCurrency}
         />
         <ProductCostSummary breakdown={productionBreakdown} currency={bomCurrency} />
+        <ProductChannelProfitabilitySection
+          productId={product.id}
+          catalogPrice={Number(product.price)}
+          currency={bomCurrency}
+          profiles={normalizedProfiles}
+          initialProfileId={normalizedProfiles[0]?.id ?? null}
+        />
         <ProductPricingSection
           productId={product.id}
           pricing={pricingAnalysis}
