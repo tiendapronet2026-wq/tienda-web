@@ -34,4 +34,8 @@ Cambios en BOM, tiempos, `batch_size`, tarifas o `total_cost_per_hour` impiden r
 
 ## Estado
 
-**En desarrollo** — migración `20261001193000_tiendapro_production_costs_g2b.sql` (aplicar en remoto solo tras CI verde + PR).
+**Implementación en PR #21** — migración Git `20261001193000_tiendapro_production_costs_g2b.sql`.
+
+Remoto Supabase: aplicar vía `tiendapro_production_costs_g2b_schema` (contenido real). Existe un registro vacío `tiendapro_production_costs_g2b` por error de apply inicial; el esquema vigente es el de `_schema`.
+
+**Gate 2B aún no cerrado** hasta merge, deploy UI y smoke productivo.
