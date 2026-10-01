@@ -6,6 +6,10 @@ import { requireAdmin } from "@/lib/auth/session";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { uniqueSlug } from "@/lib/slug";
+import {
+  stripPriceFromProductUpdatePayload,
+  type ProductFormPayload,
+} from "@/lib/admin/product-form-payload";
 
 const MAX_IMAGE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -13,7 +17,7 @@ const ALLOWED_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 export async function createProduct(formData: FormData) {
   await requireAdmin();
   const supabase = await createClient();
-  const payload = parseProductForm(formData);
+  const payload = parseProductForm(formData, "create");
 
   if ("error" in payload) return payload;
 
@@ -59,7 +63,7 @@ export async function updateProduct(formData: FormData) {
   await requireAdmin();
   const supabase = await createClient();
   const id = String(formData.get("id"));
-  const payload = parseProductForm(formData);
+  const payload = parseProductForm(formData, "update");
 
   if ("error" in payload) return payload;
 
@@ -76,10 +80,12 @@ export async function updateProduct(formData: FormData) {
   const imageFile = formData.get("image") as File | null;
   const imageUrl = imageFile?.size ? await uploadProductImage(imageFile) : undefined;
 
+  const updateRow = stripPriceFromProductUpdatePayload(payload);
+
   const { error } = await supabase
     .from("products")
     .update({
-      ...payload,
+      ...updateRow,
       ...(imageUrl ? { image_url: imageUrl } : {}),
     })
     .eq("id", id);
@@ -126,13 +132,17 @@ export async function adjustStock(formData: FormData) {
   return { success: "Stock actualizado." };
 }
 
-function parseProductForm(formData: FormData) {
+function parseProductForm(
+  formData: FormData,
+  mode: "create" | "update",
+): ProductFormPayload | { error: string } {
   const name = String(formData.get("name") ?? "").trim();
   const categoryId = String(formData.get("category_id") ?? "") || null;
   const description = String(formData.get("description") ?? "").trim() || null;
   const shortDescription = String(formData.get("short_description") ?? "").trim() || null;
   const sku = String(formData.get("sku") ?? "").trim() || null;
-  const price = Number(formData.get("price"));
+  const priceRaw = formData.get("price");
+  const price = priceRaw != null && String(priceRaw).trim() !== "" ? Number(priceRaw) : Number.NaN;
   const compareAtPrice = formData.get("compare_at_price")
     ? Number(formData.get("compare_at_price"))
     : null;
@@ -143,17 +153,20 @@ function parseProductForm(formData: FormData) {
   const isActive = formData.get("is_active") === "on";
   const isFeatured = formData.get("is_featured") === "on";
 
-  if (!name || Number.isNaN(price) || price < 0) {
+  if (!name) {
+    return { error: "El nombre es obligatorio." };
+  }
+
+  if (mode === "create" && (Number.isNaN(price) || price < 0)) {
     return { error: "Nombre y precio válido son obligatorios." };
   }
 
-  return {
+  const base: ProductFormPayload = {
     name,
     category_id: categoryId,
     description,
     short_description: shortDescription,
     sku,
-    price,
     compare_at_price: compareAtPrice,
     cost_price: costPrice,
     stock: trackStock ? stock : 0,
@@ -162,6 +175,12 @@ function parseProductForm(formData: FormData) {
     is_active: isActive,
     is_featured: isFeatured,
   };
+
+  if (mode === "create") {
+    return { ...base, price };
+  }
+
+  return base;
 }
 
 async function uploadProductImage(file: File | null) {
