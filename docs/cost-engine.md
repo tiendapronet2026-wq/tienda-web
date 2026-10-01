@@ -7,7 +7,8 @@ errores de coma flotante.
 ## Fórmulas
 
 - Material: `costo unitario × cantidad consumida`.
-- BOM producto (Gate 2): `SUM(cantidad BOM × materials.current_cost)` — ver `calculate_product_material_cost` (SQL) y `calculateProductMaterialCost` (TS).
+- BOM producto (Gate 2A): `SUM(cantidad BOM × materials.current_cost)` — ver `calculate_product_material_cost` (SQL) y `calculateProductMaterialCost` (TS).
+- Procesos (Gate 2B): run/setup por recurso + `batch_size` del paso — ver `calculateProcessResourceCostPerUnit` (TS) y `calculate_product_production_cost` (SQL). Ver `docs/cost-production-g2b.md`.
 - Merma: `costo × (1 + porcentaje / 100)`.
 - Máquina: `costo total por hora × minutos / 60`.
 - Energía: `(potencia W / 1.000) × precio kWh`.

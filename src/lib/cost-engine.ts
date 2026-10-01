@@ -41,6 +41,95 @@ export function calculateLaborCost(costPerHour: number, minutes: number): number
   return calculateMachineCost(costPerHour, minutes);
 }
 
+/** Costo por unidad: run (por unidad) + setup amortizado por lote. */
+export function calculateProcessResourceCostPerUnit(
+  costPerHour: number,
+  runMinutes: number,
+  setupMinutes: number,
+  batchSize: number,
+): number {
+  if (batchSize <= 0) throw new Error("El tamaño de lote debe ser mayor que cero.");
+  if (costPerHour < 0 || runMinutes < 0 || setupMinutes < 0) {
+    throw new Error("Costo y minutos deben ser válidos.");
+  }
+  if (runMinutes <= 0 && setupMinutes <= 0) {
+    throw new Error("Indicá minutos de run o de setup.");
+  }
+  const runPart = runMinutes > 0 ? calculateMachineCost(costPerHour, runMinutes) : 0;
+  const setupPerUnit =
+    setupMinutes > 0 ? calculateMachineCost(costPerHour, setupMinutes) / batchSize : 0;
+  return roundCurrency(runPart + setupPerUnit, 4);
+}
+
+export type ProductionCostBreakdown = {
+  materialsCost: number;
+  machineCost: number;
+  laborCost: number;
+  productionCost: number;
+  totalCost: number;
+};
+
+export function calculateProductProductionCostFromParts(
+  materialsCost: number,
+  machineCost: number,
+  laborCost: number,
+): ProductionCostBreakdown {
+  const machine = roundCurrency(machineCost, 4);
+  const labor = roundCurrency(laborCost, 4);
+  const materials = roundCurrency(materialsCost, 4);
+  const productionCost = roundCurrency(machine + labor, 4);
+  const totalCost = roundCurrency(materials + productionCost, 4);
+  return {
+    materialsCost: materials,
+    machineCost: machine,
+    laborCost: labor,
+    productionCost,
+    totalCost,
+  };
+}
+
+export type ProcessResourceLine = {
+  type: "machine" | "labor";
+  costPerHour: number;
+  runMinutes: number;
+  setupMinutes: number;
+  resourceActive: boolean;
+  lineActive: boolean;
+};
+
+export type ProcessStepLine = {
+  batchSize: number;
+  stepActive: boolean;
+  resources: ProcessResourceLine[];
+};
+
+/** Suma costos de proceso (solo pasos/recursos activos y recurso maestro activo). */
+export function sumProcessResourceCosts(steps: ProcessStepLine[]): {
+  machineCost: number;
+  laborCost: number;
+} {
+  let machine = 0;
+  let labor = 0;
+  for (const step of steps) {
+    if (!step.stepActive || step.batchSize <= 0) continue;
+    for (const res of step.resources) {
+      if (!res.lineActive || !res.resourceActive) continue;
+      const unit = calculateProcessResourceCostPerUnit(
+        res.costPerHour,
+        res.runMinutes,
+        res.setupMinutes,
+        step.batchSize,
+      );
+      if (res.type === "machine") machine += unit;
+      else labor += unit;
+    }
+  }
+  return {
+    machineCost: roundCurrency(machine, 4),
+    laborCost: roundCurrency(labor, 4),
+  };
+}
+
 export function applyWaste(cost: number, percentage: number): number {
   if (percentage < 0 || percentage > 100) throw new Error("Merma inválida");
   return multiply(cost, 1 + percentage / 100);
