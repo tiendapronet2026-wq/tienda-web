@@ -3,9 +3,37 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { ProductBomSection, type ProductBomLine } from "@/components/admin/ProductBomSection";
+import {
+  ProductCostSummary,
+  type ProductionCostRpc,
+} from "@/components/admin/ProductCostSummary";
+import {
+  ProductProcessSection,
+  type ProcessResourceRow,
+  type ProcessStepRow,
+} from "@/components/admin/ProductProcessSection";
 import { ProductForm, ProductToggle, StockAdjustForm } from "@/components/admin/ProductForm";
 import { updateProduct } from "@/app/admin/actions/products";
 import type { Product } from "@/types/database";
+
+function parseProductionCost(data: unknown): ProductionCostRpc | null {
+  if (!data || typeof data !== "object") return null;
+  const o = data as Record<string, unknown>;
+  const num = (k: string) => (o[k] != null ? Number(o[k]) : Number.NaN);
+  const materials = num("materials_cost");
+  const machine = num("machine_cost");
+  const labor = num("labor_cost");
+  const production = num("production_cost");
+  const total = num("total_cost");
+  if ([materials, machine, labor, production, total].some((n) => !Number.isFinite(n))) return null;
+  return {
+    materials_cost: materials,
+    machine_cost: machine,
+    labor_cost: labor,
+    production_cost: production,
+    total_cost: total,
+  };
+}
 
 export default async function EditProductPage({
   params,
@@ -19,29 +47,53 @@ export default async function EditProductPage({
   const { mensaje } = await searchParams;
   const supabase = await createClient();
 
-  const [{ data: product }, { data: categories }, { data: bomLines }, { data: materialOptions }, rpcRes] =
-    await Promise.all([
-      supabase.from("products").select("*").eq("id", id).maybeSingle<Product>(),
-      supabase.from("categories").select("id, name").order("name"),
-      supabase
-        .from("product_bom_lines")
-        .select("id, quantity, materials(id, name, unit_type, current_cost, currency, is_active)")
-        .eq("product_id", id)
-        .eq("is_active", true)
-        .is("product_variant_id", null)
-        .order("created_at"),
-      supabase
-        .from("materials")
-        .select("id, name, unit_type")
-        .eq("is_active", true)
-        .order("name"),
-      supabase.rpc("calculate_product_material_cost", { p_product_id: id }),
-    ]);
+  const [
+    { data: product },
+    { data: categories },
+    { data: bomLines },
+    { data: materialOptions },
+    { data: processSteps },
+    { data: machineOptions },
+    { data: laborOptions },
+    rpcMaterial,
+    rpcProduction,
+  ] = await Promise.all([
+    supabase.from("products").select("*").eq("id", id).maybeSingle<Product>(),
+    supabase.from("categories").select("id, name").order("name"),
+    supabase
+      .from("product_bom_lines")
+      .select("id, quantity, materials(id, name, unit_type, current_cost, currency, is_active)")
+      .eq("product_id", id)
+      .eq("is_active", true)
+      .is("product_variant_id", null)
+      .order("created_at"),
+    supabase.from("materials").select("id, name, unit_type").eq("is_active", true).order("name"),
+    supabase
+      .from("product_process_steps")
+      .select(
+        `id, name, position, batch_size, is_active,
+        product_process_resources (
+          id, resource_type, run_minutes, setup_minutes, is_active,
+          machines ( id, name, total_cost_per_hour, is_active ),
+          labor_rates ( id, name, cost_per_hour, is_active )
+        )`,
+      )
+      .eq("product_id", id)
+      .eq("is_active", true)
+      .order("position"),
+    supabase.from("machines").select("id, name").eq("is_active", true).order("name"),
+    supabase.from("labor_rates").select("id, name").eq("is_active", true).order("name"),
+    supabase.rpc("calculate_product_material_cost", { p_product_id: id }),
+    supabase.rpc("calculate_product_production_cost", { p_product_id: id }),
+  ]);
 
   if (!product) notFound();
 
   const rpcTotal =
-    rpcRes.error == null && rpcRes.data != null ? Number(rpcRes.data) : null;
+    rpcMaterial.error == null && rpcMaterial.data != null ? Number(rpcMaterial.data) : null;
+
+  const productionBreakdown =
+    rpcProduction.error == null ? parseProductionCost(rpcProduction.data) : null;
 
   const normalizedBomLines: ProductBomLine[] = (bomLines ?? []).map((row) => {
     const mat = row.materials;
@@ -50,6 +102,33 @@ export default async function EditProductPage({
   });
 
   const bomCurrency = normalizedBomLines[0]?.materials.currency ?? "ARS";
+
+  const normalizedSteps: ProcessStepRow[] = (processSteps ?? []).map((row) => {
+    const resources = (row.product_process_resources ?? []) as unknown[];
+    const mapped: ProcessResourceRow[] = resources.map((r) => {
+      const res = r as ProcessResourceRow & {
+        machines: ProcessResourceRow["machines"] | ProcessResourceRow["machines"][];
+        labor_rates: ProcessResourceRow["labor_rates"] | ProcessResourceRow["labor_rates"][];
+      };
+      const machine = Array.isArray(res.machines) ? res.machines[0] : res.machines;
+      const labor = Array.isArray(res.labor_rates) ? res.labor_rates[0] : res.labor_rates;
+      return {
+        ...res,
+        run_minutes: Number(res.run_minutes),
+        setup_minutes: Number(res.setup_minutes),
+        machines: machine ?? null,
+        labor_rates: labor ?? null,
+      };
+    });
+    return {
+      id: row.id,
+      name: row.name,
+      position: row.position,
+      batch_size: Number(row.batch_size),
+      is_active: row.is_active,
+      product_process_resources: mapped.filter((r) => r.is_active),
+    };
+  });
 
   return (
     <div>
@@ -79,6 +158,14 @@ export default async function EditProductPage({
           rpcTotal={rpcTotal}
           currency={bomCurrency}
         />
+        <ProductProcessSection
+          productId={product.id}
+          steps={normalizedSteps}
+          machines={machineOptions ?? []}
+          laborRates={laborOptions ?? []}
+          currency={bomCurrency}
+        />
+        <ProductCostSummary breakdown={productionBreakdown} currency={bomCurrency} />
       </div>
     </div>
   );
