@@ -8,6 +8,10 @@ import {
   type ProductionCostRpc,
 } from "@/components/admin/ProductCostSummary";
 import {
+  ProductPricingSection,
+  type ProductPricingRpc,
+} from "@/components/admin/ProductPricingSection";
+import {
   ProductProcessSection,
   type ProcessResourceRow,
   type ProcessStepRow,
@@ -15,6 +19,42 @@ import {
 import { ProductForm, ProductToggle, StockAdjustForm } from "@/components/admin/ProductForm";
 import { updateProduct } from "@/app/admin/actions/products";
 import type { Product } from "@/types/database";
+
+function parseProductPricing(data: unknown): ProductPricingRpc | null {
+  if (!data || typeof data !== "object") return null;
+  const o = data as Record<string, unknown>;
+  const num = (k: string) => (o[k] != null ? Number(o[k]) : Number.NaN);
+  const production = num("production_cost");
+  const current = num("current_sale_price");
+  const suggested = num("suggested_price");
+  const targetPct = num("target_margin_on_sale_percent");
+  const net = num("net_price");
+  const taxPct = num("tax_rate_percent");
+  const taxAmt = num("tax_amount");
+  if ([production, current, suggested, targetPct, net, taxPct, taxAmt].some((n) => !Number.isFinite(n))) {
+    return null;
+  }
+  const margin = o.actual_margin_on_sale;
+  const markup = o.actual_markup_on_cost;
+  const unit = o.unit_result;
+  return {
+    production_cost: production,
+    manual_cost_price: o.manual_cost_price != null ? Number(o.manual_cost_price) : null,
+    current_sale_price: current,
+    target_margin_on_sale_percent: targetPct,
+    net_price: net,
+    tax_rate_percent: taxPct,
+    tax_amount: taxAmt,
+    rounding_rule: String(o.rounding_rule ?? "none"),
+    suggested_price: suggested,
+    actual_margin_on_sale:
+      margin != null && Number.isFinite(Number(margin)) ? Number(margin) : null,
+    actual_markup_on_cost:
+      markup != null && Number.isFinite(Number(markup)) ? Number(markup) : null,
+    unit_result: unit != null && Number.isFinite(Number(unit)) ? Number(unit) : null,
+    below_cost: Boolean(o.below_cost),
+  };
+}
 
 function parseProductionCost(data: unknown): ProductionCostRpc | null {
   if (!data || typeof data !== "object") return null;
@@ -57,6 +97,7 @@ export default async function EditProductPage({
     { data: laborOptions },
     rpcMaterial,
     rpcProduction,
+    rpcPricing,
   ] = await Promise.all([
     supabase.from("products").select("*").eq("id", id).maybeSingle<Product>(),
     supabase.from("categories").select("id, name").order("name"),
@@ -85,6 +126,7 @@ export default async function EditProductPage({
     supabase.from("labor_rates").select("id, name").eq("is_active", true).order("name"),
     supabase.rpc("calculate_product_material_cost", { p_product_id: id }),
     supabase.rpc("calculate_product_production_cost", { p_product_id: id }),
+    supabase.rpc("calculate_product_pricing", { p_product_id: id }),
   ]);
 
   if (!product) notFound();
@@ -94,6 +136,9 @@ export default async function EditProductPage({
 
   const productionBreakdown =
     rpcProduction.error == null ? parseProductionCost(rpcProduction.data) : null;
+
+  const pricingAnalysis =
+    rpcPricing.error == null ? parseProductPricing(rpcPricing.data) : null;
 
   const normalizedBomLines: ProductBomLine[] = (bomLines ?? []).map((row) => {
     const mat = row.materials;
@@ -166,6 +211,11 @@ export default async function EditProductPage({
           currency={bomCurrency}
         />
         <ProductCostSummary breakdown={productionBreakdown} currency={bomCurrency} />
+        <ProductPricingSection
+          productId={product.id}
+          pricing={pricingAnalysis}
+          currency={bomCurrency}
+        />
       </div>
     </div>
   );

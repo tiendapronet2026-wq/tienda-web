@@ -395,9 +395,12 @@ export async function saveCostSettings(form: FormData) {
   const supabase = await createClient();
   const id = text(form, "id", 50);
   const { data: before } = await supabase.from("business_cost_settings").select("*").eq("id", id).single();
+  const roundingRule = text(form, "suggested_price_rounding_rule", 20) || "none";
   const payload = {
     electricity_price_per_kwh: numberValue(form, "electricity_price_per_kwh"),
     default_profit_margin_percentage: numberValue(form, "default_profit_margin_percentage"),
+    default_target_sale_margin_percent: numberValue(form, "default_target_sale_margin_percent"),
+    suggested_price_rounding_rule: roundingRule,
     default_waste_percentage: numberValue(form, "default_waste_percentage"),
     tax_percentage: numberValue(form, "tax_percentage"),
     fixed_overhead_percentage: numberValue(form, "fixed_overhead_percentage"),
@@ -408,6 +411,9 @@ export async function saveCostSettings(form: FormData) {
   if (
     payload.electricity_price_per_kwh < 0 ||
     payload.default_profit_margin_percentage < 0 ||
+    payload.default_target_sale_margin_percent < 0 ||
+    payload.default_target_sale_margin_percent >= 100 ||
+    !["none", "integer", "ten", "hundred"].includes(payload.suggested_price_rounding_rule) ||
     payload.default_waste_percentage < 0 ||
     payload.default_waste_percentage > 100 ||
     payload.tax_percentage < 0 ||

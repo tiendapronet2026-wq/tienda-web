@@ -9,6 +9,7 @@ errores de coma flotante.
 - Material: `costo unitario × cantidad consumida`.
 - BOM producto (Gate 2A): `SUM(cantidad BOM × materials.current_cost)` — ver `calculate_product_material_cost` (SQL) y `calculateProductMaterialCost` (TS).
 - Procesos (Gate 2B): run/setup por recurso + `batch_size` del paso — ver `calculateProcessResourceCostPerUnit` (TS) y `calculate_product_production_cost` (SQL). Ver `docs/cost-production-g2b.md`.
+- Pricing (Gate 3A): margen **sobre venta** vs recargo sobre costo — ver `src/lib/pricing-engine.ts` y `docs/pricing-foundation-g3a.md`. `applyMargin` en este archivo es **markup** (legacy), no margen sobre venta.
 - Merma: `costo × (1 + porcentaje / 100)`.
 - Máquina: `costo total por hora × minutos / 60`.
 - Energía: `(potencia W / 1.000) × precio kWh`.
