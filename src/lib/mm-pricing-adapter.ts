@@ -14,6 +14,36 @@ export type MmProductPricingView = {
   gapToTarget: number | null;
 };
 
+export type MmPricingHistoryEntry = {
+  id: string;
+  adoptedPrice: number;
+  previousPrice: number;
+  productionCostAtDecision: number;
+  suggestedPrice: number;
+  marginAfterAdoption: number | null;
+  decidedAt: string;
+};
+
+export function toMmPricingHistoryEntry(row: {
+  id: string;
+  adopted_price: number;
+  previous_price: number;
+  production_cost: number;
+  suggested_price: number;
+  actual_margin_after_adoption: number | null;
+  created_at: string;
+}): MmPricingHistoryEntry {
+  return {
+    id: row.id,
+    adoptedPrice: row.adopted_price,
+    previousPrice: row.previous_price,
+    productionCostAtDecision: row.production_cost,
+    suggestedPrice: row.suggested_price,
+    marginAfterAdoption: row.actual_margin_after_adoption,
+    decidedAt: row.created_at,
+  };
+}
+
 export function toMmProductPricingView(
   productId: string,
   analysis: PricingAnalysis,

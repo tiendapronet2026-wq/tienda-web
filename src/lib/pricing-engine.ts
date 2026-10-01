@@ -134,6 +134,24 @@ export type PricingAnalysis = SuggestedPriceResult & {
   below_cost: boolean;
 };
 
+/** Métricas al evaluar un precio final adoptado (misma semántica Gate 3A). */
+export function metricsFromAdoptedFinalPrice(
+  productionCost: number,
+  adoptedFinalPrice: number,
+  taxRateOnNet: number,
+): {
+  adopted_net_price: number | null;
+  actual_margin_on_sale: number | null;
+  actual_markup_on_cost: number | null;
+} {
+  const net = netPriceFromTaxInclusiveFinal(adoptedFinalPrice, taxRateOnNet);
+  return {
+    adopted_net_price: net,
+    actual_margin_on_sale: net != null ? calculateMarginOnSale(productionCost, net) : null,
+    actual_markup_on_cost: net != null ? calculateMarkupOnCost(productionCost, net) : null,
+  };
+}
+
 export function analyzeProductPricing(input: PricingAnalysisInput): PricingAnalysis {
   const suggested = calculateSuggestedPrice({
     productionCost: input.productionCost,

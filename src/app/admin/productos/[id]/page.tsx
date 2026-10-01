@@ -103,6 +103,7 @@ export default async function EditProductPage({
     rpcMaterial,
     rpcProduction,
     rpcPricing,
+    { data: pricingHistory },
   ] = await Promise.all([
     supabase.from("products").select("*").eq("id", id).maybeSingle<Product>(),
     supabase.from("categories").select("id, name").order("name"),
@@ -132,6 +133,14 @@ export default async function EditProductPage({
     supabase.rpc("calculate_product_material_cost", { p_product_id: id }),
     supabase.rpc("calculate_product_production_cost", { p_product_id: id }),
     supabase.rpc("calculate_product_pricing", { p_product_id: id }),
+    supabase
+      .from("product_pricing_history")
+      .select(
+        "id, previous_price, adopted_price, production_cost, suggested_price, actual_margin_after_adoption, reason, created_at, created_by",
+      )
+      .eq("product_id", id)
+      .order("created_at", { ascending: false })
+      .limit(30),
   ]);
 
   if (!product) notFound();
@@ -220,6 +229,20 @@ export default async function EditProductPage({
           productId={product.id}
           pricing={pricingAnalysis}
           currency={bomCurrency}
+          history={(pricingHistory ?? []).map((row) => ({
+            id: row.id,
+            previous_price: Number(row.previous_price),
+            adopted_price: Number(row.adopted_price),
+            production_cost: Number(row.production_cost),
+            suggested_price: Number(row.suggested_price),
+            actual_margin_after_adoption:
+              row.actual_margin_after_adoption != null
+                ? Number(row.actual_margin_after_adoption)
+                : null,
+            reason: row.reason,
+            created_at: row.created_at,
+            created_by: row.created_by,
+          }))}
         />
       </div>
     </div>
