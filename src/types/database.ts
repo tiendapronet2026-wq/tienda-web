@@ -21,6 +21,7 @@ export type Product = {
   price: number;
   compare_at_price: number | null;
   cost_price: number | null;
+  target_sale_margin_percent: number | null;
   stock: number;
   low_stock_threshold: number;
   track_stock: boolean;

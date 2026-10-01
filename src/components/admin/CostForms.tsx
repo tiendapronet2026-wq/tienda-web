@@ -440,10 +440,20 @@ export function SettingsForm({ settings }: { settings: Row }) {
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Moneda" name="currency" defaultValue={String(settings.currency)} required />
         <Field label="Precio electricidad por kWh" name="electricity_price_per_kwh" type="number" min="0" step="0.0001" defaultValue={Number(settings.electricity_price_per_kwh)} help="No se utiliza hasta que una máquina solicita cálculo automático." />
-        <Field label="Margen general (%)" name="default_profit_margin_percentage" type="number" min="0" step="0.01" defaultValue={Number(settings.default_profit_margin_percentage)} />
+        <Field label="Recargo sobre costo legacy (%)" name="default_profit_margin_percentage" type="number" min="0" step="0.01" defaultValue={Number(settings.default_profit_margin_percentage)} help="Usado por applyMargin en cost-engine (markup). No es margen sobre venta." />
+        <Field label="Margen sobre venta por defecto (%)" name="default_target_sale_margin_percent" type="number" min="0" step="0.01" defaultValue={Number(settings.default_target_sale_margin_percent ?? 0)} help="Gate 3A: precio sugerido = costo / (1 − margen). Menor que 100 %." />
+        <div>
+          <label className="mb-1 block text-sm font-medium">Redondeo precio sugerido</label>
+          <select name="suggested_price_rounding_rule" defaultValue={String(settings.suggested_price_rounding_rule ?? "none")} className="w-full rounded-xl border border-border px-4 py-3 text-sm">
+            <option value="none">Sin redondeo (2 decimales)</option>
+            <option value="integer">Entero</option>
+            <option value="ten">Múltiplo de 10</option>
+            <option value="hundred">Múltiplo de 100</option>
+          </select>
+        </div>
         <Field label="Merma predeterminada (%)" name="default_waste_percentage" type="number" min="0" step="0.01" defaultValue={Number(settings.default_waste_percentage)} />
         <Field label="Gastos indirectos (%)" name="fixed_overhead_percentage" type="number" min="0" step="0.01" defaultValue={Number(settings.fixed_overhead_percentage)} />
-        <Field label="Porcentaje impositivo opcional" name="tax_percentage" type="number" min="0" step="0.01" defaultValue={Number(settings.tax_percentage)} help="No modifica catálogo ni cotizaciones actuales." />
+        <Field label="Porcentaje impositivo opcional" name="tax_percentage" type="number" min="0" step="0.01" defaultValue={Number(settings.tax_percentage)} help="Referencia Gate 3A sobre precio neto sugerido. No suma impuesto en checkout." />
         <Field label="Días para costo desactualizado" name="cost_stale_days" type="number" min="1" defaultValue={Number(settings.cost_stale_days)} help="Se marca si no fue revisado dentro de este período." />
       </div>
       <Button type="submit" disabled={pending}>{pending ? "Guardando..." : "Guardar configuración"}</Button>
