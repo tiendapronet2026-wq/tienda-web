@@ -27,3 +27,22 @@ presentación monetaria redondea según el contexto.
 El costo interno incluye recursos consumidos. El precio sugerido agrega merma, gastos indirectos y
 margen. Ninguna función guarda datos ni modifica cotizaciones: recibe valores explícitos y devuelve
 un resultado puro.
+
+## Unidad base y presentación de compra (Gate 1)
+
+- `materials.unit_type` define la **unidad base** (ej. `hoja`, `gramo`).
+- `materials.current_cost` es siempre el costo **por unidad base**.
+- La compra suele ser una **presentación** (resma, kg): en `supplier_materials.unit_conversion_factor`
+  se guarda cuántas unidades base incluye una presentación.
+- Conversión determinista (TypeScript y RPC `compute_material_unit_cost`):
+
+  `costo unitario = precio de compra / unidades base por presentación`
+
+- Ejemplos: resma $10.000 / 500 hojas → $20/hoja; filamento $20.000 / 1000 g → $20/g.
+- Redondeo de costo unitario persistido: **4 decimales** (`numeric(14,4)` / `deriveUnitCostFromPurchase`).
+
+## Historial e idempotencia
+
+- `update_material_cost` escribe en `material_cost_history` sin sobrescribir entradas previas.
+- Opcional `idempotency_key`: reintentos con la misma clave no duplican filas de historial.
+- Sin clave idempotente, la deduplicación es responsabilidad del cliente (una acción de usuario = una llamada).

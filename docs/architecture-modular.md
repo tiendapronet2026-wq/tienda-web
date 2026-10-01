@@ -1,7 +1,7 @@
 # TiendaPro — Arquitectura modular consolidada
 
-> **Estado real (PR #1):** monolito modular Next.js · datos demo · sin SQL remoto · sin merge producción  
-> **Supabase autorizado:** `dnptsudsxrcamtxfiszh` · ref obsoleta `lwenyboejvwuopsenrwx` · no Casa León
+> **Estado real:** monolito modular Next.js · Supabase `dnptsudsxrcamtxfiszh` con migraciones aplicadas · producción en `www.tiendapro.net`  
+> **Producto:** sistema operativo comercial/productivo con capa SaaS multi-tenant preparada · no mezclar con Casa León
 
 ## 1. Dos capas de producto
 

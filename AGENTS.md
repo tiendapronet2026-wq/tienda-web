@@ -10,13 +10,14 @@ Este archivo (`AGENTS.md`) es la fuente de verdad; las reglas `.mdc` resumen sec
 
 ## Visión definitiva de TiendaPro
 
-TiendaPro evoluciona hacia una plataforma única que combina:
+Tienda Pro es el **sistema operativo comercial y productivo** (catálogo, costos, producción, ventas,
+archivos y operación). Eso incluye, en una misma plataforma:
 
 1. **Web pública comercial** de servicios digitales.
 2. **Showroom** de demostraciones interactivas.
 3. **Centro privado** de gestión de clientes y proyectos.
-4. **Centro de coordinación** de agentes e informes operativos.
-5. **Plataforma base** para desarrollar y administrar futuros proyectos independientes.
+4. **Centro de coordinación** de agentes e informes operativos (vía M&M, sin duplicar cerebro).
+5. **Capacidad SaaS modular** para instalaciones/tenants futuros — característica arquitectónica, no un producto aparte.
 
 El código legado (catálogo, carrito, cotizaciones, costos de impresión, etc.) es **transitorio**: puede sustituirse durante la reconstrucción y **no debe condicionar** módulos, rutas ni esquema definitivos.
 
@@ -44,7 +45,7 @@ Priorizar arquitectura modular, multi-tenant y extensible.
 | **GitHub** | `tiendapronet2026-wq/tienda-web`, rama `master` | Repo autorizado único |
 | **GitHub Actions** | Workflow `CI` (`.github/workflows/ci.yml`): un job `validate` (lint + build) | Concurrencia solo dentro de este workflow; no cancela Vercel ni migraciones |
 | **Supabase (código)** | Ref autorizada: **`dnptsudsxrcamtxfiszh`** (`src/lib/platform/supabase-project.ts`, `next.config.ts`) | Baseline `supabase/migrations/20260920000000_tiendapro_baseline.sql` — **no SQL remoto** hasta MCP vea este proyecto (no Casa León) |
-| **Supabase (MCP agente)** | Org visible incluye **`casa-leon-prod`** | **Prohibido** usar Casa León para TiendaPro |
+| **Supabase (MCP agente)** | Proyecto Tienda Pro: **`dnptsudsxrcamtxfiszh`** (org compartida) | **Prohibido** mezclar datos/ops de Casa León en tareas Tienda Pro |
 | **Sitio público** | `NEXT_PUBLIC_SITE_URL` → **`https://www.tiendapro.net`** (`.env.example`) | Redirects de auth |
 | **Vercel** | Proyecto: **`tiendapronet2026-wqs-projects` / `tienda-web`** (integración GitHub) | Previews en PR; producción en `master`. **Estado válido**: check GitHub `success` y descripción tipo *Deployment has completed* — no asumir éxito solo por URL pendiente |
 | **Cursor Cloud** | Repo `github.com/tiendapronet2026-wq/tienda-web` | `.env.example`; no commitear `.env*` |
@@ -90,7 +91,7 @@ Variables (nombres): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ### Supabase
 
-- Proyecto TiendaPro: ref **`dnptsudsxrcamtxfiszh`**. Ref **`lwenyboejvwuopsenrwx`** obsoleta — no operar. **Sin SQL remoto** hasta MCP liste este proyecto (hoy solo `casa-leon-prod`).
+- Proyecto TiendaPro: ref **`dnptsudsxrcamtxfiszh`**. Ref **`lwenyboejvwuopsenrwx`** obsoleta — no operar. Migraciones versionadas en repo; aplicar en remoto solo con gate/autorización explícita.
 - **No usar** `casa-leon-prod` ni credenciales ajenas.
 - Migraciones versionadas; RLS y permisos mínimos; sin `service_role` en cliente.
 - Multi-tenant futuro: aislar datos por cliente/proyecto.
