@@ -3,7 +3,9 @@
 import { useCallback, useState } from "react";
 import { StatusPill } from "./StatusPill";
 
-type Check = { id: string; pass: boolean; label: string; last_at?: string | null };
+type CheckScope = "activation" | "platform" | "policy" | "meta";
+
+type Check = { id: string; pass: boolean; label: string; last_at?: string | null; scope?: CheckScope };
 
 type Diagnostics = {
   ok: boolean;
@@ -11,6 +13,15 @@ type Diagnostics = {
   connection_status: string;
   checklist: Check[];
   progress: { passed: number; total: number };
+  diagnostic_progress?: { passed: number; total: number };
+  activation_progress?: { met: boolean; passed: number; total: number };
+};
+
+const SCOPE_HEADINGS: Record<CheckScope, string> = {
+  activation: "Requisitos de activación",
+  platform: "Plataforma y evals",
+  policy: "Políticas y capacidades opcionales",
+  meta: "Resumen",
 };
 
 export function CasaLeonDiagnosticsPanel({ initial }: { initial: Diagnostics | null }) {
@@ -82,26 +93,45 @@ export function CasaLeonDiagnosticsPanel({ initial }: { initial: Diagnostics | n
   }
 
   const ready = data.checklist.find((c) => c.id === "promotion_ready")?.pass;
+  const isActive = data.project_status === "ACTIVE";
+  const diagnostic = data.diagnostic_progress ?? data.progress;
+  const scopes: CheckScope[] = ["activation", "platform", "policy", "meta"];
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <StatusPill label={data.project_status} tone={data.project_status === "ACTIVE" ? "ok" : "warn"} />
+        <StatusPill label={data.project_status} tone={isActive ? "ok" : "warn"} />
         <StatusPill label={data.connection_status} tone={data.connection_status === "ACTIVE" ? "ok" : "muted"} />
         <StatusPill label="READ ONLY" tone="read" />
         <span className="text-sm text-[#a8b0bc]">
-          Progreso: {data.progress.passed}/{data.progress.total}
+          Diagnóstico: {diagnostic.passed}/{diagnostic.total} checks
         </span>
+        {isActive && data.activation_progress?.met ? (
+          <span className="text-sm text-emerald-300/90">Activación: completa</span>
+        ) : null}
       </div>
 
-      <ul className="divide-y divide-[#2a2f36] rounded-lg border border-[#2a2f36]">
-        {data.checklist.map((c) => (
-          <li key={c.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-            <span className="text-[#f3f0e8]">{c.label}</span>
-            <StatusPill label={c.pass ? "OK" : "PENDIENTE"} tone={c.pass ? "ok" : "warn"} />
-          </li>
-        ))}
-      </ul>
+      <div className="space-y-4">
+        {scopes.map((scope) => {
+          const rows = data.checklist.filter((c) => (c.scope ?? "activation") === scope);
+          if (rows.length === 0) return null;
+          return (
+            <section key={scope}>
+              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-[#8a919c]">
+                {SCOPE_HEADINGS[scope]}
+              </h3>
+              <ul className="divide-y divide-[#2a2f36] rounded-lg border border-[#2a2f36]">
+                {rows.map((c) => (
+                  <li key={c.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                    <span className="text-[#f3f0e8]">{c.label}</span>
+                    <StatusPill label={c.pass ? "OK" : "PENDIENTE"} tone={c.pass ? "ok" : "warn"} />
+                  </li>
+                ))}
+              </ul>
+            </section>
+          );
+        })}
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <button
