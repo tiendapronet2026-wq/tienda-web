@@ -2,59 +2,122 @@
 
 ## Estado
 
-**En desarrollo** — rama `feat/tiendapro-channel-profitability-g3c`, migración `20261002210000_tiendapro_channel_profitability_g3c.sql`.
+**GATE 3C — GREEN / CLOSED** (2026-10-01)
+
+PR [#24](https://github.com/tiendapronet2026-wq/tienda-web/pull/24) mergeado en `master` (`658576f`). Migración remota aplicada.
 
 ---
 
-## Preflight (obligatorio)
+## Preflight
 
 ### REUTILIZADO
 
-| Pieza | Uso Gate 3C |
-|-------|-------------|
-| `products.price` (3A) | Precio final de catálogo por defecto en simulación |
-| `business_cost_settings.tax_percentage` (3A) | `net_sales_revenue = final / (1 + tax)` |
-| `calculate_product_production_cost` (2B) | `production_cost` / `total_cost` por unidad |
-| `netPriceFromTaxInclusiveFinal` (TS) / misma fórmula en SQL | Semántica fiscal 3A |
-| `is_admin()` + patrón RPC `SECURITY DEFINER` (2A/3A/3B) | RPC y RLS admin-only |
-| `orders.shipping_cost`, `payments.provider` (legacy checkout) | Solo registro de pedido; **no** modelo de comisión por canal |
-| Checkout `place-order` | Lee `product.price`; **sin cambios** en Gate 3C |
+| Pieza | Uso |
+|-------|-----|
+| `products.price` (3A) | Precio final de catálogo por defecto |
+| `business_cost_settings.tax_percentage` | Venta neta = `final / (1 + tax)` |
+| `calculate_product_production_cost` (2B) | `total_cost` unitario |
+| `is_admin()` + RPC `SECURITY DEFINER` | Perfiles y simulación |
+| Checkout / `orders` / `payments` | Sin cambios; no modelan comisiones de canal |
 
-### FALTANTE (este gate)
+### FALTANTE (entregado en 3C)
 
-- Tabla `channel_cost_profiles` (perfiles económicos completos)
-- RPC `calculate_product_channel_profitability`
-- Motor TS `channel-profitability-engine` + tests A–K
-- Admin: `/admin/perfiles-rentabilidad` + sección producto «Rentabilidad por canal»
-- Regresión SQL seguridad RPC
+`channel_cost_profiles`, `calculate_product_channel_profitability`, motor TS, admin UI, tests A–L, adapter M&M read-only.
 
 ### CONFLICTOS SEMÁNTICOS
 
-| Tema | Resolución |
-|------|------------|
-| Canal vs medio de cobro | Un solo **perfil** agrupa ambos (% canal + % cobro + fijos por pedido) |
-| `orders.shipping_cost` | Es lo que paga el cliente en checkout hoy; **no** es «envío absorbido» del negocio |
-| `payments.provider = mercadopago` | Identificador de integración futura; **no** tarifa automática |
-| Promociones / descuentos | Solo vía `final_price_override` en simulación; sin doble descuento |
-| `product_pricing_history` (3B) | Sigue siendo historial de **decisiones de precio**; 3C no persiste simulaciones |
-
-### MODELO MÍNIMO PROPUESTO
-
-`channel_cost_profiles` — proveedor-independiente, sin columnas MP/ML.
-
-Simulación: `calculate_product_channel_profitability(product_id, profile_id, final_price_override?, units_per_order?)` → JSON con contribución unitaria, margen del canal, break-even.
+Canal ≠ cobro → **perfil único**. `orders.shipping_cost` ≠ envío absorbido. Promos solo vía `final_price_override`. Sin historial de simulaciones (3B sigue siendo historial de precio).
 
 ---
 
-## Fórmulas (resumen)
+## Modelo de perfiles
 
-- Fees variables sobre **precio final** `P`.
-- Fijos por pedido ÷ `units_per_order`.
+Tabla `channel_cost_profiles`: % canal, % cobro, fijos por pedido (fijo, envío absorbido, otros), `default_units_per_order`, `is_active`. Sin columnas por proveedor (MP/ML).
+
+RLS: admin CRUD; anon y no-admin sin acceso.
+
+---
+
+## Semántica económica
+
+- Fees **variables** sobre precio final `P`.
+- Fees **fijos** ÷ `units_per_order`.
 - `unit_contribution = net_sales_revenue − production_cost − channel_cost_per_unit`.
-- Break-even: `P = (production + f_unit) / ((1/(1+t)) − r)` con `r = fee_canal + fee_cobro`; inviable si denominador ≤ 0.
+- **No** se llama “ganancia neta”.
+- `channel_margin = unit_contribution / net_sales_revenue` (si neto > 0).
+- `return_on_production_cost` aparte, etiquetado en UI.
+
+---
+
+## Break-even
+
+`P = (production + f_unit) / ((1/(1+t)) − r)` con `r = fee_canal + fee_cobro`. Si denominador ≤ 0 → perfil inviable (UI lo muestra).
+
+---
+
+## Simulación
+
+RPC/UI: `final_price_override`, `units_per_order` opcionales. **No** modifica `products.price`, perfiles ni `product_pricing_history`.
+
+---
+
+## Admin
+
+- `/admin/perfiles-rentabilidad` — CRUD perfiles.
+- Ficha producto — **Rentabilidad por canal** (selector + simulación).
+
+---
+
+## Seguridad
+
+| Rol | Perfiles | RPC |
+|-----|----------|-----|
+| anon | Bloqueado | Sin EXECUTE |
+| authenticated no-admin | Bloqueado | `Acceso denegado` |
+| admin | CRUD | OK |
+
+Regresión: `supabase/tests/isolated/product_channel_profitability_g3c_rpc.sql`.
+
+---
+
+## Tests
+
+Vitest `channel-profitability-engine.test.ts`: casos **A–K**. SQL: **L**.
+
+---
+
+## Smoke productivo
+
+Perfil `TEST G3C - Canal` (`code=test-g3c-canal`): canal 8 %, cobro 3 %, envío 500/pedido, 1 u/pedido.
+
+Producto TEST `370b38c8-…`: RPC admin validó fees 800/300, override 9000 con catálogo 10000, no-admin bloqueado.
+
+Perfil **desactivado**; producto restaurado `price=100`, `is_active=false`.
+
+---
+
+## Git ↔ Supabase
+
+| Git | Remoto |
+|-----|--------|
+| `20261002210000_tiendapro_channel_profitability_g3c.sql` | `20261001234952` — `tiendapro_channel_profitability_g3c` |
+
+---
+
+## M&M
+
+`mm-channel-profitability-adapter.ts` — solo lectura; sin escritura de perfiles ni precios.
+
+---
+
+## Riesgos residuales
+
+- Perfiles son manuales (sin APIs de marketplaces).
+- Costos empresariales fuera del modelo (estructura, ads, impuestos reales).
+- `cost_price` / `compare_at_price` sin cambios (deuda previa).
 
 ---
 
 ## Siguiente gate
 
-Gate 3D+ (integraciones, promociones formales, automatización) — no iniciado.
+**Gate 3D+** (integraciones de pago/marketplace, promociones formales, precios por canal) — **no iniciado**.
