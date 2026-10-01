@@ -74,6 +74,7 @@ export async function saveSupplier(form: FormData) {
     city: nullable(form, "city", 120),
     province: nullable(form, "province", 120),
     country: text(form, "country", 120) || "Argentina",
+    default_currency: (nullable(form, "default_currency", 3) || "ARS").toUpperCase(),
     notes: nullable(form, "notes"),
     payment_terms: nullable(form, "payment_terms", 500),
     lead_time_days: leadTime,
@@ -258,18 +259,32 @@ export async function updateMaterialCost(form: FormData) {
   await requireAdmin();
   const supabase = await createClient();
   const materialId = text(form, "material_id", 50);
+  const purchasePrice = nullableNumber(form, "purchase_price");
+  const unitsPerPurchase = nullableNumber(form, "units_per_purchase");
   const newCost = numberValue(form, "new_cost", Number.NaN);
-  if (!materialId || !Number.isFinite(newCost) || newCost < 0) return { error: "Costo inválido." };
+  const hasPurchase =
+    purchasePrice !== null && Number.isFinite(purchasePrice) && purchasePrice >= 0 && purchasePrice > 0;
+  const hasDirectUnit = Number.isFinite(newCost) && newCost >= 0 && newCost > 0;
+  if (!materialId) return { error: "Material inválido." };
+  if (!hasPurchase && !hasDirectUnit) {
+    return { error: "Indicá precio de compra con unidades por presentación, o costo unitario directo." };
+  }
+  if (hasPurchase && (unitsPerPurchase === null || !Number.isFinite(unitsPerPurchase) || unitsPerPurchase <= 0)) {
+    return { error: "Indicá cuántas unidades base incluye la presentación (ej. 500 hojas)." };
+  }
   const { error } = await supabase.rpc("update_material_cost", {
     p_material_id: materialId,
-    p_new_cost: newCost,
+    p_new_cost: hasPurchase ? null : newCost,
     p_supplier_id: nullable(form, "supplier_id", 50),
     p_currency: (text(form, "currency", 3) || "ARS").toUpperCase(),
-    p_quantity_purchased: nullableNumber(form, "quantity_purchased"),
+    p_quantity_purchased: hasPurchase ? unitsPerPurchase : nullableNumber(form, "quantity_purchased"),
     p_purchase_unit: nullable(form, "purchase_unit", 80),
     p_reference: nullable(form, "reference", 200),
     p_notes: nullable(form, "notes"),
     p_effective_date: text(form, "effective_date", 10) || new Date().toISOString().slice(0, 10),
+    p_purchase_price: hasPurchase ? purchasePrice : null,
+    p_unit_conversion_factor: hasPurchase ? unitsPerPurchase : nullableNumber(form, "unit_conversion_factor"),
+    p_idempotency_key: nullable(form, "idempotency_key", 120),
   });
   if (error) return { error: "No se pudo registrar el cambio de costo." };
   revalidatePath("/admin/materiales");

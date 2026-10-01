@@ -129,6 +129,12 @@ export function SupplierForm({ supplier }: { supplier?: Row }) {
         <div className="mt-4 grid gap-4 sm:grid-cols-2">
           <Field label="Condiciones de pago" name="payment_terms" defaultValue={supplier?.payment_terms as string} />
           <Field label="Plazo habitual (días)" name="lead_time_days" type="number" min="0" defaultValue={supplier?.lead_time_days as number} />
+          <Field
+            label="Moneda habitual"
+            name="default_currency"
+            defaultValue={(supplier?.default_currency as string) ?? "ARS"}
+            help="Código ISO de 3 letras (ej. ARS)."
+          />
         </div>
         <div className="mt-4"><TextArea label="Notas" name="notes" defaultValue={supplier?.notes as string} /></div>
         <div className="mt-4"><Check label="Proveedor activo" name="is_active" defaultChecked={supplier ? Boolean(supplier.is_active) : true} /></div>
@@ -244,15 +250,38 @@ export function MaterialCostForm({ materialId, currency, suppliers }: { material
       <h2 className="text-lg font-semibold">Registrar nuevo costo</h2>
       <Message state={state} />
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nuevo costo" name="new_cost" type="number" min="0" step="0.0001" required />
+        <Field
+          label="Precio de compra (presentación)"
+          name="purchase_price"
+          type="number"
+          min="0"
+          step="0.0001"
+          help="Ej. precio de la resma o del kg. Se divide por unidades base."
+        />
+        <Field
+          label="Unidades base por presentación"
+          name="units_per_purchase"
+          type="number"
+          min="0.000001"
+          step="0.000001"
+          help="Ej. 500 hojas por resma, 1000 g por kg."
+        />
+        <Field
+          label="Costo unitario directo (alternativa)"
+          name="new_cost"
+          type="number"
+          min="0"
+          step="0.0001"
+          help="Solo si ya conocés el costo por unidad base sin calcular."
+        />
         <Field label="Moneda" name="currency" defaultValue={currency} required />
         <label className="block text-sm font-medium">Proveedor
           <select name="supplier_id" className={input}><option value="">Sin especificar</option>{suppliers.map((s) => <option key={String(s.id)} value={String(s.id)}>{String(s.name)}</option>)}</select>
         </label>
         <Field label="Fecha efectiva" name="effective_date" type="date" defaultValue={new Date().toISOString().slice(0, 10)} />
-        <Field label="Cantidad comprada" name="quantity_purchased" type="number" min="0" step="0.0001" />
-        <Field label="Unidad de compra" name="purchase_unit" />
+        <Field label="Unidad de compra" name="purchase_unit" help="Ej. resma, kg." />
         <Field label="Referencia / factura" name="reference" />
+        <Field label="Clave idempotencia (opcional)" name="idempotency_key" help="Reintentos técnicos con la misma clave no duplican historial." />
       </div>
       <TextArea label="Notas" name="notes" />
       <Button type="submit" disabled={pending}>{pending ? "Registrando..." : "Actualizar costo"}</Button>

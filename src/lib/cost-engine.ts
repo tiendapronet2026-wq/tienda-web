@@ -57,3 +57,12 @@ export function roundCurrency(value: number, decimals = 2): number {
   const factor = 10 ** decimals;
   return Math.round((value + Number.EPSILON) * factor) / factor;
 }
+
+/** Costo por unidad base = precio de la presentación / unidades base incluidas (ej. resma 500 hojas). */
+export function deriveUnitCostFromPurchase(purchasePrice: number, unitsPerPurchase: number): number {
+  if (purchasePrice < 0 || unitsPerPurchase <= 0) {
+    throw new Error("Precio de compra y unidades por presentación deben ser positivos");
+  }
+  const unitScaled = (scaled(purchasePrice) * SCALE + scaled(unitsPerPurchase) / TWO) / scaled(unitsPerPurchase);
+  return roundCurrency(unscaled(unitScaled), 4);
+}
