@@ -98,6 +98,7 @@ declare
   v_actual_margin numeric;
   v_actual_markup numeric;
   v_unit_result numeric;
+  v_current_net numeric;
 begin
   if not public.is_admin() then
     raise exception 'Acceso denegado';
@@ -151,14 +152,21 @@ begin
   v_tax_amt := round(v_net * v_tax_frac, 4);
   v_suggested := public._pricing_round_suggested(v_net + v_tax_amt, v_rule);
 
+  -- Precio catálogo = final con impuesto referencia; margen/markup sobre neto derivado.
   if v_price > 0 then
-    v_actual_margin := (v_price - v_production) / v_price;
+    if v_tax_frac > 0 then
+      v_current_net := round(v_price / (1 + v_tax_frac), 4);
+    else
+      v_current_net := v_price;
+    end if;
+    v_actual_margin := (v_current_net - v_production) / v_current_net;
   else
+    v_current_net := null;
     v_actual_margin := null;
   end if;
 
-  if v_production > 0 then
-    v_actual_markup := (v_price - v_production) / v_production;
+  if v_production > 0 and v_current_net is not null then
+    v_actual_markup := (v_current_net - v_production) / v_production;
   else
     v_actual_markup := null;
   end if;
@@ -172,6 +180,8 @@ begin
     'labor_cost', coalesce((v_cost->>'labor_cost')::numeric, 0),
     'manual_cost_price', v_prod.cost_price,
     'current_sale_price', v_price,
+    'current_net_sale_price', v_current_net,
+    'price_semantics', 'tax_inclusive_final',
     'target_margin_on_sale_percent', v_margin_pct,
     'target_margin_on_sale_fraction', v_margin_frac,
     'net_price', v_net,
@@ -188,7 +198,7 @@ end;
 $$;
 
 comment on function public.calculate_product_pricing(uuid, numeric, numeric, text) is
-  'Admin-only: costo Gate 2 + precio actual + margen/markup + precio sugerido. No modifica products.price ni cost_price.';
+  'Admin-only: costo Gate 2 (neto operativo) + precio catálogo (final con impuesto referencia). Margen/markup actuales sobre neto derivado. No modifica products.price ni cost_price.';
 
 revoke all on function public.calculate_product_pricing(uuid, numeric, numeric, text) from public;
 revoke all on function public.calculate_product_pricing(uuid, numeric, numeric, text) from anon;

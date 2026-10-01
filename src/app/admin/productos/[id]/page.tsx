@@ -37,10 +37,15 @@ function parseProductPricing(data: unknown): ProductPricingRpc | null {
   const margin = o.actual_margin_on_sale;
   const markup = o.actual_markup_on_cost;
   const unit = o.unit_result;
+  const currentNetRaw = o.current_net_sale_price;
   return {
     production_cost: production,
     manual_cost_price: o.manual_cost_price != null ? Number(o.manual_cost_price) : null,
     current_sale_price: current,
+    current_net_sale_price:
+      currentNetRaw != null && Number.isFinite(Number(currentNetRaw))
+        ? Number(currentNetRaw)
+        : null,
     target_margin_on_sale_percent: targetPct,
     net_price: net,
     tax_rate_percent: taxPct,

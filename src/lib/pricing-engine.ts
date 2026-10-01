@@ -1,17 +1,36 @@
 import { roundCurrency } from "@/lib/cost-engine";
 
-/** Margen sobre venta: (precio - costo) / precio */
-export function calculateMarginOnSale(cost: number, salePrice: number): number | null {
-  if (!Number.isFinite(cost) || !Number.isFinite(salePrice)) return null;
-  if (salePrice <= 0) return null;
-  return (salePrice - cost) / salePrice;
+/**
+ * Semántica Gate 3A (Opción A):
+ * - `products.price` / precio de catálogo = precio final con impuesto de referencia incluido (checkout no desglosa).
+ * - Costo Gate 2 = base operativa neta (sin IVA en el motor).
+ * - Margen/markup actuales se calculan sobre precio neto derivado: final / (1 + tax_rate).
+ */
+
+/** Precio neto a partir del precio final de catálogo y tasa referencia sobre neto. */
+export function netPriceFromTaxInclusiveFinal(
+  finalSalePrice: number,
+  taxRateOnNet: number,
+): number | null {
+  if (!Number.isFinite(finalSalePrice) || finalSalePrice < 0) return null;
+  if (!Number.isFinite(taxRateOnNet) || taxRateOnNet < 0 || taxRateOnNet > 1) return null;
+  if (finalSalePrice === 0) return 0;
+  if (taxRateOnNet === 0) return roundCurrency(finalSalePrice, 4);
+  return roundCurrency(finalSalePrice / (1 + taxRateOnNet), 4);
 }
 
-/** Recargo sobre costo: (precio - costo) / costo */
-export function calculateMarkupOnCost(cost: number, salePrice: number): number | null {
-  if (!Number.isFinite(cost) || !Number.isFinite(salePrice)) return null;
-  if (cost <= 0) return salePrice > cost ? null : 0;
-  return (salePrice - cost) / cost;
+/** Margen sobre venta (neto): (precio_neto - costo) / precio_neto */
+export function calculateMarginOnSale(cost: number, netSalePrice: number): number | null {
+  if (!Number.isFinite(cost) || !Number.isFinite(netSalePrice)) return null;
+  if (netSalePrice <= 0) return null;
+  return (netSalePrice - cost) / netSalePrice;
+}
+
+/** Recargo sobre costo usando la misma base neta: (precio_neto - costo) / costo */
+export function calculateMarkupOnCost(cost: number, netSalePrice: number): number | null {
+  if (!Number.isFinite(cost) || !Number.isFinite(netSalePrice)) return null;
+  if (cost <= 0) return netSalePrice > cost ? null : 0;
+  return (netSalePrice - cost) / cost;
 }
 
 /** `targetMargin` es fracción sobre venta: 0.4 = 40 % */
@@ -108,6 +127,7 @@ export type PricingAnalysisInput = {
 
 export type PricingAnalysis = SuggestedPriceResult & {
   current_sale_price: number;
+  current_net_sale_price: number | null;
   actual_margin_on_sale: number | null;
   actual_markup_on_cost: number | null;
   unit_result: number | null;
@@ -121,17 +141,21 @@ export function analyzeProductPricing(input: PricingAnalysisInput): PricingAnaly
     taxRateOnNet: input.taxRateOnNet,
     roundingRule: input.roundingRule,
   });
-  const current = roundCurrency(input.currentSalePrice, 2);
-  const actualMargin = calculateMarginOnSale(input.productionCost, current);
-  const actualMarkup = calculateMarkupOnCost(input.productionCost, current);
+  const currentFinal = roundCurrency(input.currentSalePrice, 2);
+  const currentNet = netPriceFromTaxInclusiveFinal(currentFinal, input.taxRateOnNet);
+  const actualMargin =
+    currentNet != null ? calculateMarginOnSale(input.productionCost, currentNet) : null;
+  const actualMarkup =
+    currentNet != null ? calculateMarkupOnCost(input.productionCost, currentNet) : null;
   const unitResult =
-    Number.isFinite(current) && Number.isFinite(input.productionCost)
-      ? roundCurrency(current - input.productionCost, 2)
+    Number.isFinite(currentFinal) && Number.isFinite(input.productionCost)
+      ? roundCurrency(currentFinal - input.productionCost, 2)
       : null;
 
   return {
     ...suggested,
-    current_sale_price: current,
+    current_sale_price: currentFinal,
+    current_net_sale_price: currentNet,
     actual_margin_on_sale: actualMargin,
     actual_markup_on_cost: actualMarkup,
     unit_result: unitResult,

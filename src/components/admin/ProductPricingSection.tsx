@@ -11,6 +11,7 @@ export type ProductPricingRpc = {
   production_cost: number;
   manual_cost_price: number | null;
   current_sale_price: number;
+  current_net_sale_price: number | null;
   target_margin_on_sale_percent: number;
   net_price: number;
   tax_rate_percent: number;
@@ -65,7 +66,9 @@ export function ProductPricingSection({
     <section className={section}>
       <h2 className="text-lg font-semibold">Precio y rentabilidad</h2>
       <p className="mt-1 text-sm text-text-secondary">
-        Costo desde Gate 2 (`total_cost`). No se modifica el precio de venta ni `cost_price` automáticamente.
+        Costo Gate 2 (neto operativo). Precio de catálogo = <strong>final</strong> con impuesto de referencia
+        incluido (checkout no desglosa IVA). Margen y recargo actuales se calculan sobre el{" "}
+        <strong>precio neto derivado</strong>.
       </p>
 
       {pricing.below_cost && (
@@ -87,9 +90,15 @@ export function ProductPricingSection({
           </div>
         )}
         <div className="flex justify-between gap-4">
-          <dt className="text-muted">Precio actual</dt>
+          <dt className="text-muted">Precio actual (final catálogo)</dt>
           <dd className="font-medium">{formatPrice(pricing.current_sale_price)}</dd>
         </div>
+        {pricing.tax_rate_percent > 0 && (
+          <div className="flex justify-between gap-4">
+            <dt className="text-muted">Precio neto derivado (actual)</dt>
+            <dd>{fmtCost(pricing.current_net_sale_price ?? 0)}</dd>
+          </div>
+        )}
         <div className="flex justify-between gap-4">
           <dt className="text-muted">Margen sobre venta (actual)</dt>
           <dd>{pct(pricing.actual_margin_on_sale)}</dd>

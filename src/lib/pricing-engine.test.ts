@@ -92,4 +92,42 @@ describe("Gate 3A pricing", () => {
   it("percentToFraction", () => {
     expect(percentToFraction(21)).toBeCloseTo(0.21, 6);
   });
+
+  it("J — precio actual = precio sugerido → margen actual ≈ objetivo (tax 0)", () => {
+    const target = 0.4;
+    const suggested = calculateSuggestedPrice({
+      productionCost: 100,
+      targetMarginOnSale: target,
+      taxRateOnNet: 0,
+      roundingRule: "none",
+    });
+    const analysis = analyzeProductPricing({
+      productionCost: 100,
+      currentSalePrice: suggested.suggested_price,
+      targetMarginOnSale: target,
+      taxRateOnNet: 0,
+      roundingRule: "none",
+    });
+    expect(analysis.actual_margin_on_sale).toBeCloseTo(target, 3);
+  });
+
+  it("J — precio actual = precio sugerido → margen actual ≈ objetivo (tax 21 %)", () => {
+    const target = 0.4;
+    const tax = 0.21;
+    const suggested = calculateSuggestedPrice({
+      productionCost: 100,
+      targetMarginOnSale: target,
+      taxRateOnNet: tax,
+      roundingRule: "none",
+    });
+    const analysis = analyzeProductPricing({
+      productionCost: 100,
+      currentSalePrice: suggested.suggested_price,
+      targetMarginOnSale: target,
+      taxRateOnNet: tax,
+      roundingRule: "none",
+    });
+    expect(analysis.actual_margin_on_sale).toBeCloseTo(target, 2);
+    expect(analysis.current_net_sale_price).toBeCloseTo(suggested.net_price, 2);
+  });
 });
