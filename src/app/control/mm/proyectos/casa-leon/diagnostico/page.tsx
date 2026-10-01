@@ -18,9 +18,10 @@ export default async function CasaLeonDiagnosticoPage() {
       <Link href="/control/mm/proyectos/casa-leon" className="text-sm text-amber-400 hover:underline">
         ← Casa León
       </Link>
-      <h2 className="text-xl font-semibold">Diagnóstico Casa León</h2>
+      <h2 className="text-xl font-semibold">Diagnóstico técnico</h2>
       <p className="text-sm text-[#a8b0bc]">
-        Pruebas determinísticas sin LLM. Las ejecuciones pasan por M&M (Policy → Execute → Verify → Receipt).
+        Verificaciones de conexión, seguridad y herramientas. No afectan el estado operativo cuando el proyecto ya está
+        activo.
       </p>
       <CasaLeonDiagnosticsPanel initial={initial?.ok ? (initial.data as never) : null} />
     </div>
