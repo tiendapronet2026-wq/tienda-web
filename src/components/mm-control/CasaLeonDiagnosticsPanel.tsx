@@ -2,8 +2,21 @@
 
 import { useCallback, useState } from "react";
 import { StatusPill } from "./StatusPill";
+import {
+  DIAGNOSTIC_SECTION_HEADINGS,
+  SECTION_ORDER,
+  diagnosticSectionForCheck,
+  type DiagnosticSectionId,
+} from "./casa-leon-diagnostic-sections";
 
-type Check = { id: string; pass: boolean; label: string; last_at?: string | null };
+type CheckScope = "activation" | "platform" | "policy" | "meta";
+
+type Check = { id: string; pass: boolean; label: string; last_at?: string | null; scope?: CheckScope };
+
+type Operational = {
+  mm_environment?: { slug: string; name: string } | null;
+  mm_environment_note?: string | null;
+};
 
 type Diagnostics = {
   ok: boolean;
@@ -11,6 +24,9 @@ type Diagnostics = {
   connection_status: string;
   checklist: Check[];
   progress: { passed: number; total: number };
+  diagnostic_progress?: { passed: number; total: number };
+  activation_progress?: { met: boolean; passed: number; total: number };
+  operational?: Operational;
 };
 
 export function CasaLeonDiagnosticsPanel({ initial }: { initial: Diagnostics | null }) {
@@ -82,26 +98,64 @@ export function CasaLeonDiagnosticsPanel({ initial }: { initial: Diagnostics | n
   }
 
   const ready = data.checklist.find((c) => c.id === "promotion_ready")?.pass;
+  const isActive = data.project_status === "ACTIVE";
+  const diagnostic = data.diagnostic_progress ?? {
+    passed: data.checklist.filter((c) => c.id !== "promotion_ready" && c.pass).length,
+    total: data.checklist.filter((c) => c.id !== "promotion_ready").length,
+  };
+
+  const checksBySection = SECTION_ORDER.map((section) => ({
+    section,
+    rows: data.checklist.filter((c) => diagnosticSectionForCheck(c.id, c.scope) === section),
+  })).filter((g) => g.rows.length > 0);
+
+  const envSlug = data.operational?.mm_environment?.slug;
+  const envNote = data.operational?.mm_environment_note;
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-3">
-        <StatusPill label={data.project_status} tone={data.project_status === "ACTIVE" ? "ok" : "warn"} />
-        <StatusPill label={data.connection_status} tone={data.connection_status === "ACTIVE" ? "ok" : "muted"} />
-        <StatusPill label="READ ONLY" tone="read" />
+        <StatusPill label={data.project_status} tone={isActive ? "ok" : "warn"} />
+        <StatusPill label="Solo lectura" tone="read" />
         <span className="text-sm text-[#a8b0bc]">
-          Progreso: {data.progress.passed}/{data.progress.total}
+          Diagnóstico técnico: {diagnostic.passed}/{diagnostic.total} checks
         </span>
+        {isActive ? (
+          <span className="text-sm text-emerald-300/90">Proyecto activo en producción</span>
+        ) : (
+          <span className="text-sm text-amber-200/90">
+            Activación pendiente
+            {data.activation_progress
+              ? ` (${data.activation_progress.passed}/${data.activation_progress.total} requisitos)`
+              : ""}
+          </span>
+        )}
       </div>
 
-      <ul className="divide-y divide-[#2a2f36] rounded-lg border border-[#2a2f36]">
-        {data.checklist.map((c) => (
-          <li key={c.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-            <span className="text-[#f3f0e8]">{c.label}</span>
-            <StatusPill label={c.pass ? "OK" : "PENDIENTE"} tone={c.pass ? "ok" : "warn"} />
-          </li>
+      {envSlug ? (
+        <p className="rounded-md border border-[#2a2f36] bg-[#1a1e24] px-3 py-2 text-xs text-[#a8b0bc]">
+          <span className="text-[#f3f0e8]">Registro M&M: {envSlug}</span>
+          {envNote ? <> — {envNote}</> : null}
+        </p>
+      ) : null}
+
+      <div className="space-y-4">
+        {checksBySection.map(({ section, rows }) => (
+          <section key={section}>
+            <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-[#8a919c]">
+              {DIAGNOSTIC_SECTION_HEADINGS[section as DiagnosticSectionId]}
+            </h3>
+            <ul className="divide-y divide-[#2a2f36] rounded-lg border border-[#2a2f36]">
+              {rows.map((c) => (
+                <li key={c.id} className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
+                  <span className="text-[#f3f0e8]">{c.label}</span>
+                  <StatusPill label={c.pass ? "OK" : "PENDIENTE"} tone={c.pass ? "ok" : "warn"} />
+                </li>
+              ))}
+            </ul>
+          </section>
         ))}
-      </ul>
+      </div>
 
       <div className="flex flex-wrap gap-2">
         <button
@@ -136,14 +190,16 @@ export function CasaLeonDiagnosticsPanel({ initial }: { initial: Diagnostics | n
         >
           Probar Geli → M&M
         </button>
-        <button
-          type="button"
-          disabled={!!busy || !ready}
-          onClick={promote}
-          className="rounded-md border border-emerald-800/50 px-3 py-2 text-sm text-emerald-200 hover:bg-emerald-950/40 disabled:opacity-40"
-        >
-          Promover a ACTIVE
-        </button>
+        {!isActive ? (
+          <button
+            type="button"
+            disabled={!!busy || !ready}
+            onClick={promote}
+            className="rounded-md border border-emerald-800/50 px-3 py-2 text-sm text-emerald-200 hover:bg-emerald-950/40 disabled:opacity-40"
+          >
+            Promover a ACTIVE
+          </button>
+        ) : null}
       </div>
 
       {error ? <p className="text-sm text-red-300">Error: {error}</p> : null}
