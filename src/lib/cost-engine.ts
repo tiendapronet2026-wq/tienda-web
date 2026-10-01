@@ -19,6 +19,19 @@ export function calculateMaterialCost(unitCost: number, quantity: number): numbe
   return multiply(unitCost, quantity);
 }
 
+/** Roll-up BOM: SUM(cantidad × costo unitario base del material). */
+export function calculateProductMaterialCost(
+  lines: Array<{ quantity: number; unitCost: number }>,
+): number {
+  let total = 0;
+  for (const line of lines) {
+    if (line.quantity <= 0) throw new Error("Cantidad BOM debe ser positiva");
+    if (line.unitCost < 0) throw new Error("Costo unitario inválido");
+    total += calculateMaterialCost(line.unitCost, line.quantity);
+  }
+  return roundCurrency(total, 4);
+}
+
 export function calculateMachineCost(costPerHour: number, minutes: number): number {
   if (costPerHour < 0 || minutes < 0) throw new Error("Costo y minutos deben ser positivos");
   return multiply(costPerHour, minutes / 60);
