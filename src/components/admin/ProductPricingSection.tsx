@@ -1,11 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { formatCost, formatPrice } from "@/lib/utils";
+import { metricsFromAdoptedFinalPrice } from "@/lib/pricing-engine";
 import {
+  adoptProductPricing,
   captureProductCostSnapshot,
   updateProductTargetMargin,
 } from "@/app/admin/actions/pricing";
+import {
+  ProductPricingHistorySection,
+  type PricingHistoryRow,
+} from "@/components/admin/ProductPricingHistorySection";
 
 export type ProductPricingRpc = {
   production_cost: number;
@@ -40,13 +46,32 @@ export function ProductPricingSection({
   productId,
   pricing,
   currency,
+  history,
 }: {
   productId: string;
   pricing: ProductPricingRpc | null;
   currency: string;
+  history: PricingHistoryRow[];
 }) {
   const [msg, setMsg] = useState<{ error?: string; success?: string } | null>(null);
   const [pending, startTransition] = useTransition();
+  const [suggestedKey, setSuggestedKey] = useState(() => crypto.randomUUID());
+  const [customKey, setCustomKey] = useState(() => crypto.randomUUID());
+  const [customPrice, setCustomPrice] = useState("");
+  const [confirmSuggested, setConfirmSuggested] = useState(false);
+  const [confirmCustom, setConfirmCustom] = useState(false);
+
+  const taxFrac = pricing ? pricing.tax_rate_percent / 100 : 0;
+  const customPreview = useMemo(() => {
+    if (!pricing) return null;
+    const p = Number(customPrice.replace(",", "."));
+    if (!Number.isFinite(p) || p < 0) return null;
+    return metricsFromAdoptedFinalPrice(pricing.production_cost, p, taxFrac);
+  }, [customPrice, pricing, taxFrac]);
+  const suggestedAfter = useMemo(() => {
+    if (!pricing) return null;
+    return metricsFromAdoptedFinalPrice(pricing.production_cost, pricing.suggested_price, taxFrac);
+  }, [pricing, taxFrac]);
 
   if (!pricing) {
     return (
@@ -61,6 +86,16 @@ export function ProductPricingSection({
 
   const fmtCost = (n: number) => formatCost(n, currency);
   const marginTarget = pricing.target_margin_on_sale_percent;
+
+  const onAdoptResult = (r: { error?: string; success?: string }) => {
+    setMsg(r.error ? { error: r.error } : { success: r.success });
+    if (!r.error) {
+      setSuggestedKey(crypto.randomUUID());
+      setCustomKey(crypto.randomUUID());
+      setConfirmSuggested(false);
+      setConfirmCustom(false);
+    }
+  };
 
   return (
     <section className={section}>
@@ -167,6 +202,127 @@ export function ProductPricingSection({
         )}
       </div>
 
+      <div className="mt-6 space-y-4 border-t border-border pt-4">
+        <h3 className="text-base font-semibold">Adoptar precio</h3>
+        {!confirmSuggested ? (
+          <button
+            type="button"
+            disabled={pending}
+            className="w-full rounded-[var(--radius-md)] bg-brand px-4 py-3 text-sm font-medium text-white sm:w-auto"
+            onClick={() => setConfirmSuggested(true)}
+          >
+            Adoptar precio sugerido ({formatPrice(pricing.suggested_price)})
+          </button>
+        ) : (
+          <div className="rounded-md border border-border bg-background p-4 text-sm">
+            <p className="font-medium">Confirmar adopción del precio sugerido</p>
+            <ul className="mt-2 list-inside list-disc text-muted">
+              <li>Costo calculado: {fmtCost(pricing.production_cost)}</li>
+              <li>Precio actual: {formatPrice(pricing.current_sale_price)}</li>
+              <li>Precio sugerido: {formatPrice(pricing.suggested_price)}</li>
+              <li>
+                Margen estimado tras adoptar: {pct(suggestedAfter?.actual_margin_on_sale ?? null)}
+              </li>
+            </ul>
+            <form
+              className="mt-3 flex flex-col gap-2"
+              action={(fd) => {
+                startTransition(async () => onAdoptResult(await adoptProductPricing(fd)));
+              }}
+            >
+              <input type="hidden" name="product_id" value={productId} />
+              <input type="hidden" name="adopt_mode" value="suggested" />
+              <input type="hidden" name="idempotency_key" value={suggestedKey} />
+              <input
+                name="reason"
+                placeholder="Motivo (opcional)"
+                className="rounded-[var(--radius-md)] border border-border px-3 py-2"
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-medium text-white"
+                >
+                  Confirmar adopción
+                </button>
+                <button
+                  type="button"
+                  className="rounded-[var(--radius-md)] border border-border px-4 py-2 text-sm"
+                  onClick={() => setConfirmSuggested(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+
+        {!confirmCustom ? (
+          <button
+            type="button"
+            className="text-sm text-brand underline"
+            onClick={() => setConfirmCustom(true)}
+          >
+            Adoptar otro precio
+          </button>
+        ) : (
+          <div className="rounded-md border border-border bg-background p-4 text-sm">
+            <p className="font-medium">Adoptar precio manual</p>
+            <form
+              className="mt-2 flex flex-col gap-2"
+              action={(fd) => {
+                startTransition(async () => onAdoptResult(await adoptProductPricing(fd)));
+              }}
+            >
+              <input type="hidden" name="product_id" value={productId} />
+              <input type="hidden" name="adopt_mode" value="custom" />
+              <input type="hidden" name="idempotency_key" value={customKey} />
+              <label className="text-sm">
+                Precio final a adoptar
+                <input
+                  name="custom_adopted_price"
+                  type="number"
+                  min={0}
+                  step={0.01}
+                  required
+                  value={customPrice}
+                  onChange={(e) => setCustomPrice(e.target.value)}
+                  className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
+                />
+              </label>
+              {customPreview && (
+                <p className="text-xs text-muted">
+                  Sugerido {formatPrice(pricing.suggested_price)} → margen sobre venta (neto):{" "}
+                  {pct(customPreview.actual_margin_on_sale)}
+                </p>
+              )}
+              <input
+                name="reason"
+                placeholder="Motivo (opcional)"
+                className="rounded-[var(--radius-md)] border border-border px-3 py-2"
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  disabled={pending}
+                  className="rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-medium text-white"
+                >
+                  Confirmar precio manual
+                </button>
+                <button
+                  type="button"
+                  className="rounded-[var(--radius-md)] border border-border px-4 py-2 text-sm"
+                  onClick={() => setConfirmCustom(false)}
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          </div>
+        )}
+      </div>
+
       <form
         className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-end"
         action={(fd) => {
@@ -200,6 +356,8 @@ export function ProductPricingSection({
       {msg?.success && (
         <p className="mt-3 rounded-md bg-brand-soft px-3 py-2 text-sm text-brand">{msg.success}</p>
       )}
+
+      <ProductPricingHistorySection rows={history} currency={currency} />
     </section>
   );
 }

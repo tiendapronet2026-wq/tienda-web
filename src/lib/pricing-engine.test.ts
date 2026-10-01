@@ -4,6 +4,7 @@ import {
   calculateMarginOnSale,
   calculateMarkupOnCost,
   calculateSuggestedPrice,
+  metricsFromAdoptedFinalPrice,
   netPriceFromTargetMarginOnSale,
   percentToFraction,
   roundSuggestedPrice,
@@ -109,6 +110,28 @@ describe("Gate 3A pricing", () => {
       roundingRule: "none",
     });
     expect(analysis.actual_margin_on_sale).toBeCloseTo(target, 3);
+  });
+
+  it("Gate 3B A — adopción precio 200 con costo 100 (margen sobre neto)", () => {
+    const m = metricsFromAdoptedFinalPrice(100, 200, 0);
+    expect(m.actual_margin_on_sale).toBeCloseTo(0.5, 4);
+  });
+
+  it("Gate 3B C — precio manual distinto del sugerido", () => {
+    const m = metricsFromAdoptedFinalPrice(100, 190, 0);
+    expect(m.actual_margin_on_sale).toBeCloseTo((190 - 100) / 190, 4);
+  });
+
+  it("Gate 3B G — margen con precio final e impuesto", () => {
+    const tax = 0.21;
+    const suggested = calculateSuggestedPrice({
+      productionCost: 100,
+      targetMarginOnSale: 0.4,
+      taxRateOnNet: tax,
+      roundingRule: "none",
+    });
+    const m = metricsFromAdoptedFinalPrice(100, suggested.suggested_price, tax);
+    expect(m.actual_margin_on_sale).toBeCloseTo(0.4, 2);
   });
 
   it("J — precio actual = precio sugerido → margen actual ≈ objetivo (tax 21 %)", () => {

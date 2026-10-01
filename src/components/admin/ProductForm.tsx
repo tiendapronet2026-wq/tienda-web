@@ -51,7 +51,23 @@ export function ProductForm({
             ))}
           </select>
         </div>
-        <Field label="Precio" name="price" type="number" step="0.01" defaultValue={product?.price} required />
+        {product ? (
+          <div className="sm:col-span-2">
+            <label className="mb-1 block text-sm font-medium">Precio (catálogo)</label>
+            <input
+              type="text"
+              readOnly
+              value={product.price}
+              className="w-full rounded-xl border border-border bg-muted/30 px-4 py-3 text-sm"
+            />
+            <p className="mt-1 text-xs text-muted">
+              Para cambiar el precio usá la sección <strong>Precio y rentabilidad</strong> → Adoptar
+              precio.
+            </p>
+          </div>
+        ) : (
+          <Field label="Precio" name="price" type="number" step="0.01" required />
+        )}
         <Field
           label="Precio anterior"
           name="compare_at_price"

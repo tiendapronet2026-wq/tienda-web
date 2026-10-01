@@ -66,3 +66,53 @@ export async function captureProductCostSnapshot(form: FormData) {
   revalidatePath(`/admin/productos/${productId}`);
   return { success: "Snapshot de costo registrado." };
 }
+
+function parseOptionalPrice(form: FormData, key: string): number | null {
+  const raw = text(form, key, 40).replace(",", ".");
+  if (!raw) return null;
+  const value = Number(raw);
+  return Number.isFinite(value) ? value : Number.NaN;
+}
+
+export async function adoptProductPricing(form: FormData) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const productId = text(form, "product_id", 50);
+  const reason = text(form, "reason", 500);
+  const idempotencyKey = text(form, "idempotency_key", 120);
+  const useSuggested = text(form, "adopt_mode", 20) === "suggested";
+  const customPrice = parseOptionalPrice(form, "custom_adopted_price");
+
+  if (!productId) return { error: "Producto inválido." };
+  if (!idempotencyKey || idempotencyKey.length < 8) {
+    return { error: "Clave de idempotencia inválida." };
+  }
+
+  let adoptedPrice: number | null = null;
+  if (!useSuggested) {
+    if (customPrice == null || !Number.isFinite(customPrice) || customPrice < 0) {
+      return { error: "Indicá un precio adoptado válido." };
+    }
+    adoptedPrice = customPrice;
+  }
+
+  const { data, error } = await supabase.rpc("adopt_product_pricing", {
+    p_product_id: productId,
+    p_adopted_price: adoptedPrice,
+    p_reason: reason || null,
+    p_idempotency_key: idempotencyKey,
+  });
+
+  if (error) return { error: error.message.includes("Acceso denegado") ? "Acceso denegado." : "No se pudo adoptar el precio." };
+  if (!data || typeof data !== "object") return { error: "Respuesta inválida." };
+
+  const replay = Boolean((data as Record<string, unknown>).idempotent_replay);
+  revalidatePath(`/admin/productos/${productId}`);
+  revalidatePath("/productos");
+  revalidatePath("/checkout");
+  return {
+    success: replay
+      ? "Operación ya registrada (idempotencia)."
+      : `Precio adoptado: ${(data as Record<string, unknown>).adopted_price}`,
+  };
+}
