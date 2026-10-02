@@ -7,6 +7,7 @@ import {
   resolvePostLoginRedirect,
 } from "@/lib/platform/panel-access";
 import { loadSessionPlatformContext } from "@/lib/platform/session-platform";
+import { getSupabasePublishableKey, getSupabaseUrl } from "@/lib/supabase/env";
 import { isTiendaProSupabaseConfigured } from "@/lib/platform/tenant-loader";
 
 const AUTH_PUBLIC_PATHS = ["/login", "/registro", "/recuperar-password", "/actualizar-password"];
@@ -25,8 +26,15 @@ export async function updateSession(request: NextRequest) {
     request: { headers: requestHeaders },
   });
 
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  let url: string | undefined;
+  let key: string | undefined;
+  try {
+    url = getSupabaseUrl();
+    key = getSupabasePublishableKey();
+  } catch {
+    url = undefined;
+    key = undefined;
+  }
   const platformDb = isTiendaProSupabaseConfigured();
 
   if (!url || !key) {

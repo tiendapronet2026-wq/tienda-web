@@ -147,16 +147,10 @@ export async function confirmLinkSession(token: string, oauthState?: string | nu
 }
 
 export async function listSafeConnections(): Promise<SafeConnectionRow[]> {
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from("integration_connections")
-    .select(
-      "id, provider, connection_type, display_name, external_account_id, external_account_label, status, is_active, connected_at, last_verified_at, revoked_at",
-    )
-    .order("created_at", { ascending: false });
-
-  if (error) throw new Error(error.message);
-  return (data ?? []) as SafeConnectionRow[];
+  const { listSafeConnections: listFromRpc } = await import(
+    "@/lib/integrations/connections-read"
+  );
+  return listFromRpc();
 }
 
 export async function verifyConnection(connectionId: string) {
@@ -174,28 +168,31 @@ export async function verifyConnection(connectionId: string) {
   if (!provider?.isImplemented) throw new Error("Proveedor no implementado.");
 
   const result = await provider.verifyConnection(connectionId);
-  const admin = createAdminClient();
 
   if (result.ok) {
-    await admin
+    const { error: updErr } = await supabase
       .from("integration_connections")
       .update({ last_verified_at: new Date().toISOString(), updated_at: new Date().toISOString() })
       .eq("id", connectionId);
-    await admin.rpc("log_integration_audit_event", {
+    if (updErr) throw new Error(updErr.message);
+
+    const { error: auditErr } = await supabase.rpc("log_integration_audit_event", {
       p_event_type: "connection_verified",
       p_provider: row.provider,
       p_connection_id: connectionId,
       p_link_session_id: null,
       p_metadata: { message: result.message ?? null },
     });
+    if (auditErr) throw new Error(auditErr.message);
   } else {
-    await admin.rpc("log_integration_audit_event", {
+    const { error: auditErr } = await supabase.rpc("log_integration_audit_event", {
       p_event_type: "connection_failed",
       p_provider: row.provider,
       p_connection_id: connectionId,
       p_link_session_id: null,
       p_metadata: { message: result.message ?? null },
     });
+    if (auditErr) throw new Error(auditErr.message);
   }
 
   return result;

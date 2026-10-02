@@ -9,6 +9,7 @@ const SECRET_PATTERNS: RegExp[] = [
   /\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g,
   /\bBRIDGE_API_SECRET\s*[:=]\s*\S+/gi,
   /\bSUPABASE_SERVICE_ROLE_KEY\s*[:=]\s*\S+/gi,
+  /\bSUPABASE_SECRET_KEY\s*[:=]\s*\S+/gi,
   /\bBearer\s+[A-Za-z0-9._-]{16,}/gi,
 ];
 
