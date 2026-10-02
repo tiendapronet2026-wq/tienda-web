@@ -120,4 +120,4 @@ Perfil **desactivado**; producto restaurado `price=100`, `is_active=false`.
 
 ## Siguiente gate
 
-**Gate 3D+** (integraciones de pago/marketplace, promociones formales, precios por canal) — **no iniciado**.
+**Gate 3D** (precio objetivo por margen de contribución del canal) — ver `docs/pricing-channel-target-g3d.md`.
