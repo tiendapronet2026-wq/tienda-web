@@ -20,6 +20,7 @@ const costLinks = [
   { href: "/admin/mano-de-obra", label: "Mano de obra" },
   { href: "/admin/configuracion/costos", label: "Configuración" },
   { href: "/admin/perfiles-rentabilidad", label: "Perfiles rentabilidad" },
+  { href: "/admin/integraciones", label: "Integraciones" },
   { href: "/admin/costos/auditoria", label: "Auditoría" },
 ];
 
