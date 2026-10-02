@@ -7,11 +7,13 @@ export function ConnectConfirmForm({
   providerLabel,
   requesterLabel,
   expiresAt,
+  providerId,
 }: {
   token: string;
   providerLabel: string;
   requesterLabel: string;
   expiresAt: string;
+  providerId?: string;
 }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -28,6 +30,10 @@ export function ConnectConfirmForm({
       const body = await res.json().catch(() => ({}));
       if (!res.ok) {
         setError(body.error ?? "No se pudo completar la vinculación.");
+        return;
+      }
+      if (body.action === "redirect" && typeof body.authorizationUrl === "string") {
+        window.location.assign(body.authorizationUrl);
         return;
       }
       setDone(true);
@@ -67,7 +73,11 @@ export function ConnectConfirmForm({
         onClick={onConfirm}
         className="mt-6 w-full rounded-xl bg-brand py-3 text-sm font-medium text-white disabled:opacity-50"
       >
-        {pending ? "Vinculando…" : "Confirmar vinculación"}
+        {pending
+          ? "Vinculando…"
+          : providerId === "mercadopago"
+            ? "Continuar con Mercado Pago"
+            : "Confirmar vinculación"}
       </button>
     </div>
   );

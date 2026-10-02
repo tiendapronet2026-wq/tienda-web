@@ -36,9 +36,20 @@ export async function POST(request: Request) {
 
   try {
     const result = await confirmLinkSession(token, body.state ?? null);
+    if (result.kind === "redirect") {
+      return NextResponse.json(
+        stripSecretsFromObject({
+          ok: true,
+          action: "redirect",
+          authorizationUrl: result.authorizationUrl,
+          provider: result.provider,
+        }),
+      );
+    }
     return NextResponse.json(
       stripSecretsFromObject({
         ok: true,
+        action: "connected",
         connectionId: result.connectionId,
         provider: result.provider,
       }),
