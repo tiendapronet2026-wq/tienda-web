@@ -8,7 +8,7 @@ import {
   startIntegrationLink,
   verifyIntegrationConnection,
 } from "@/app/admin/actions/integrations";
-import type { SafeConnectionRow } from "@/lib/integrations/integration-service";
+import type { SafeConnectionRow } from "@/lib/integrations/connections-read";
 import { listIntegrationCatalog } from "@/lib/integrations/providers/registry";
 
 const section =
