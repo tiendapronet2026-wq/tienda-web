@@ -2,7 +2,11 @@
 
 ## Estado
 
-**EN CURSO** — rama `feat/tiendapro-integrations-foundation-g3f`.
+**GATE 3F — GREEN / CLOSED** (2026-10-02)
+
+PR [#27](https://github.com/tiendapronet2026-wq/tienda-web/pull/27) mergeado en `master`.
+
+**Requisito deploy:** configurar `INTEGRATION_CREDENTIALS_KEY` (≥32 chars) en Vercel Production/Preview para completar vinculaciones con credenciales cifradas.
 
 ---
 
@@ -10,44 +14,36 @@
 
 ### REUTILIZADO
 
-- `is_admin()`, RLS admin, `requireAdmin()`, `createAdminClient()` (service role server-only).
-- `BRIDGE_API_SECRET` patrón timing-safe (referencia, no duplicar integraciones).
-- Tabla `payments` / `mercadopago` en schema legacy **sin** OAuth activo en app.
-- `platform_installations` metadata sin secretos (instalador SaaS, distinto dominio).
-- Gate 3E / checkout **sin cambios**.
+`is_admin()` / RLS; `requireAdmin()`; `createAdminClient()`; patrón secretos servidor (`BRIDGE_API_SECRET`); checkout / Gate 3E sin cambios.
 
-### FALTANTE (entregado en rama)
+### FALTANTE (entregado)
 
-- `integration_connections`, `integration_link_sessions`, `integration_connection_credentials`, `integration_audit_events`.
-- RPC link/revoke/finalize; QR `/connect/<token>`; admin `/admin/integraciones`.
-- Adapter `IntegrationProvider` + piloto `link_demo`.
-- Cifrado AES-GCM con `INTEGRATION_CREDENTIALS_KEY`.
+Modelo integraciones + link sessions + auditoría + cifrado + UI `/admin/integraciones` + `/connect/<token>` + adapter + piloto `link_demo`.
 
 ### RIESGOS
 
-- Sin `INTEGRATION_CREDENTIALS_KEY` en Vercel, confirmar vinculación falla al guardar credenciales.
-- Rate limit en confirm es in-memory (suficiente Gate 3F; Redis en gates futuros si hace falta).
+Sin `INTEGRATION_CREDENTIALS_KEY`, confirm falla al persistir credenciales. Rate-limit confirm in-memory (suficiente 3F).
 
-### MODELO PROPUESTO
+### MODELO
 
-Conexión (metadata pública) + credenciales cifradas (solo service role) + sesiones one-time (hash SHA-256) + auditoría append-only.
+Conexión (metadata) · credenciales cifradas (solo service role) · sesión QR (hash SHA-256, 5 min) · eventos audit append-only.
 
 ---
 
 ## Piloto
 
-`link_demo` — laboratorio sin proveedor externo. WhatsApp / Mercado Pago: tarjetas **Próximamente** (sin flujo falso).
+`link_demo` — laboratorio interno. WhatsApp / Mercado Pago: **Próximamente** (sin flujo engañoso).
 
 ---
 
 ## Git ↔ Supabase
 
-| Git | Remoto (pendiente apply) |
-|-----|--------------------------|
-| `20261003010000_tiendapro_integrations_foundation_g3f.sql` | `tiendapro_integrations_foundation_g3f` |
+| Git | Remoto |
+|-----|--------|
+| `20261003010000_tiendapro_integrations_foundation_g3f.sql` | `tiendapro_integrations_foundation_g3f` + `g3f_core` / `g3f_rpc2` / `g3f_rpc3` (apply remoto en pasos) |
 
 ---
 
 ## Siguiente gate
 
-**3G** — primer proveedor real (OAuth/Embedded) sobre esta fundación. **No iniciado.**
+**Gate 3G** — primer proveedor real (OAuth/Embedded). **No iniciado.**

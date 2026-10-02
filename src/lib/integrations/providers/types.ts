@@ -42,4 +42,6 @@ export interface IntegrationProvider {
   completeAuthorization(input: AuthorizationCompleteInput): Promise<AuthorizationCompleteResult>;
   verifyConnection(connectionId: string): Promise<VerifyConnectionResult>;
   revokeConnection(connectionId: string): Promise<void>;
+  /** OAuth refresh — implementar por proveedor en Gate 3G+. */
+  refreshCredentials?(connectionId: string): Promise<void>;
 }
