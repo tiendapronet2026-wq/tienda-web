@@ -153,32 +153,38 @@ export async function listSafeConnections(): Promise<SafeConnectionRow[]> {
   return listFromRpc();
 }
 
+async function loadConnectionAdmin(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  connectionId: string,
+) {
+  const { data, error } = await supabase.rpc("get_integration_connection_admin", {
+    p_connection_id: connectionId,
+  });
+  if (error) throw new Error(error.message);
+  const payload = data as { found?: boolean; provider?: string; status?: string };
+  if (!payload?.found) throw new Error("Conexión no encontrada.");
+  return payload;
+}
+
 export async function verifyConnection(connectionId: string) {
   const supabase = await createClient();
-  const { data: row, error } = await supabase
-    .from("integration_connections")
-    .select("id, provider, status")
-    .eq("id", connectionId)
-    .maybeSingle();
-
-  if (error || !row) throw new Error("Conexión no encontrada.");
+  const row = await loadConnectionAdmin(supabase, connectionId);
   if (row.status !== "connected") throw new Error("La conexión no está activa.");
 
-  const provider = getIntegrationProvider(row.provider);
+  const provider = getIntegrationProvider(String(row.provider));
   if (!provider?.isImplemented) throw new Error("Proveedor no implementado.");
 
   const result = await provider.verifyConnection(connectionId);
 
   if (result.ok) {
-    const { error: updErr } = await supabase
-      .from("integration_connections")
-      .update({ last_verified_at: new Date().toISOString(), updated_at: new Date().toISOString() })
-      .eq("id", connectionId);
+    const { error: updErr } = await supabase.rpc("touch_integration_connection_verified", {
+      p_connection_id: connectionId,
+    });
     if (updErr) throw new Error(updErr.message);
 
     const { error: auditErr } = await supabase.rpc("log_integration_audit_event", {
       p_event_type: "connection_verified",
-      p_provider: row.provider,
+      p_provider: String(row.provider),
       p_connection_id: connectionId,
       p_link_session_id: null,
       p_metadata: { message: result.message ?? null },
@@ -187,7 +193,7 @@ export async function verifyConnection(connectionId: string) {
   } else {
     const { error: auditErr } = await supabase.rpc("log_integration_audit_event", {
       p_event_type: "connection_failed",
-      p_provider: row.provider,
+      p_provider: String(row.provider),
       p_connection_id: connectionId,
       p_link_session_id: null,
       p_metadata: { message: result.message ?? null },
@@ -200,13 +206,15 @@ export async function verifyConnection(connectionId: string) {
 
 export async function revokeConnection(connectionId: string, reason?: string) {
   const supabase = await createClient();
-  const { data: row } = await supabase
-    .from("integration_connections")
-    .select("provider")
-    .eq("id", connectionId)
-    .maybeSingle();
+  let providerId: string | null = null;
+  try {
+    const row = await loadConnectionAdmin(supabase, connectionId);
+    providerId = String(row.provider ?? "");
+  } catch {
+    providerId = null;
+  }
 
-  const provider = row ? getIntegrationProvider(row.provider) : null;
+  const provider = providerId ? getIntegrationProvider(providerId) : null;
   if (provider?.isImplemented) {
     await provider.revokeConnection(connectionId);
   }
