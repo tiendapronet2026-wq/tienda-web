@@ -9,6 +9,11 @@ function parseNum(raw: FormDataEntryValue | null, fallback = 0): number {
   return Number(String(raw).replace(",", "."));
 }
 
+function parseOptionalMargin(raw: FormDataEntryValue | null): number | null {
+  if (raw == null || String(raw).trim() === "") return null;
+  return Number(String(raw).replace(",", "."));
+}
+
 export async function createChannelProfile(formData: FormData) {
   await requireAdmin();
   const supabase = await createClient();
@@ -25,6 +30,7 @@ export async function createChannelProfile(formData: FormData) {
     shipping_absorbed_per_order: parseNum(formData.get("shipping_absorbed_per_order")),
     other_cost_per_order: parseNum(formData.get("other_cost_per_order")),
     default_units_per_order: parseNum(formData.get("default_units_per_order"), 1),
+    target_channel_margin_percent: parseOptionalMargin(formData.get("target_channel_margin_percent")),
     is_active: formData.get("is_active") === "on",
   });
 
@@ -52,6 +58,7 @@ export async function updateChannelProfile(formData: FormData) {
       shipping_absorbed_per_order: parseNum(formData.get("shipping_absorbed_per_order")),
       other_cost_per_order: parseNum(formData.get("other_cost_per_order")),
       default_units_per_order: parseNum(formData.get("default_units_per_order"), 1),
+      target_channel_margin_percent: parseOptionalMargin(formData.get("target_channel_margin_percent")),
       is_active: formData.get("is_active") === "on",
       updated_at: new Date().toISOString(),
     })
@@ -79,6 +86,30 @@ export async function simulateChannelProfitability(formData: FormData) {
     p_profile_id: profileId,
     p_final_price_override: override != null && Number.isFinite(override) ? override : null,
     p_units_per_order: units != null && Number.isFinite(units) ? units : null,
+  });
+
+  if (error) return { error: error.message };
+  return { data };
+}
+
+export async function simulateChannelTargetPrice(formData: FormData) {
+  await requireAdmin();
+  const supabase = await createClient();
+  const productId = String(formData.get("product_id"));
+  const profileId = String(formData.get("profile_id"));
+  if (!productId || !profileId) return { error: "Producto y perfil son obligatorios." };
+
+  const marginRaw = String(formData.get("target_channel_margin_percent") ?? "").trim();
+  const unitsRaw = String(formData.get("units_per_order") ?? "").trim();
+  const margin = marginRaw ? Number(marginRaw.replace(",", ".")) : null;
+  const units = unitsRaw ? Number(unitsRaw.replace(",", ".")) : null;
+
+  const { data, error } = await supabase.rpc("calculate_product_channel_target_price", {
+    p_product_id: productId,
+    p_profile_id: profileId,
+    p_target_margin_percent: margin != null && Number.isFinite(margin) ? margin : null,
+    p_units_per_order: units != null && Number.isFinite(units) ? units : null,
+    p_rounding_rule: null,
   });
 
   if (error) return { error: error.message };

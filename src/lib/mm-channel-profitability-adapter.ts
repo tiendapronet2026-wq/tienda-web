@@ -2,7 +2,10 @@
  * Adapter READ-ONLY para futura integración M&M (Gate 3C).
  * Expone simulación de rentabilidad por perfil; no modifica perfiles ni precios.
  */
-import type { ChannelProfitabilityResult } from "@/lib/channel-profitability-engine";
+import type {
+  ChannelProfitabilityResult,
+  RequiredChannelPriceResult,
+} from "@/lib/channel-profitability-engine";
 
 export type MmChannelProfitabilityView = {
   productId: string;
@@ -29,6 +32,34 @@ function dominantChannelCost(r: ChannelProfitabilityResult): MmChannelProfitabil
   ];
   const top = parts.reduce((a, b) => (b.v > a.v ? b : a), parts[0]);
   return top.v > 0 ? top.k : "none";
+}
+
+export type MmChannelTargetPriceView = {
+  productId: string;
+  profileId: string;
+  targetMarginPercent: number;
+  requiredFinalPrice: number | null;
+  catalogPrice: number;
+  priceGap: number | null;
+  feasible: boolean;
+  infeasibleReason: string | null;
+};
+
+export function toMmChannelTargetPriceView(
+  productId: string,
+  profileId: string,
+  result: RequiredChannelPriceResult,
+): MmChannelTargetPriceView {
+  return {
+    productId,
+    profileId,
+    targetMarginPercent: result.target_channel_margin * 100,
+    requiredFinalPrice: result.rounded_required_final_price,
+    catalogPrice: result.catalog_final_price,
+    priceGap: result.current_price_gap,
+    feasible: result.feasible,
+    infeasibleReason: result.infeasible_reason,
+  };
 }
 
 export function toMmChannelProfitabilityView(

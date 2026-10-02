@@ -1,5 +1,10 @@
 import { roundCurrency } from "@/lib/cost-engine";
-import { netPriceFromTaxInclusiveFinal, percentToFraction } from "@/lib/pricing-engine";
+import {
+  netPriceFromTaxInclusiveFinal,
+  percentToFraction,
+  roundSuggestedPrice,
+  type PriceRoundingRule,
+} from "@/lib/pricing-engine";
 
 /** Porcentaje almacenado 0–100 (config admin). */
 export function validateFeePercent(percent: number, label: string): void {
@@ -21,7 +26,183 @@ export type ChannelCostProfileInput = {
   shipping_absorbed_per_order: number;
   other_cost_per_order: number;
   default_units_per_order: number;
+  /** Margen de contribución objetivo sobre venta neta (%), distinto de Gate 3A */
+  target_channel_margin_percent?: number | null;
 };
+
+export function validateTargetChannelMarginPercent(percent: number): number {
+  if (!Number.isFinite(percent) || percent < 0 || percent >= 100) {
+    throw new Error("Margen de contribución del canal inválido: debe ser >= 0 y < 100 %.");
+  }
+  return percent / 100;
+}
+
+export function fixedCostPerUnit(profile: ChannelCostProfileInput, units: number): number {
+  validateUnitsPerOrder(units);
+  return roundCurrency(
+    profile.fixed_fee_per_order / units +
+      profile.shipping_absorbed_per_order / units +
+      profile.other_cost_per_order / units,
+    4,
+  );
+}
+
+/** P = (C+F) / (((1-m)/(1+t)) - r) */
+export function rawRequiredFinalPriceForChannelMargin(
+  productionCost: number,
+  fixedCostPerUnit: number,
+  channelFeeRate: number,
+  paymentFeeRate: number,
+  taxRateFraction: number,
+  targetMarginFraction: number,
+): {
+  raw_required_final_price: number | null;
+  feasible: boolean;
+  infeasible_reason: string | null;
+  variable_fee_rate: number;
+  denominator: number;
+} {
+  const r = channelFeeRate + paymentFeeRate;
+  const invOnePlusT = taxRateFraction > 0 ? 1 / (1 + taxRateFraction) : 1;
+  const denom = ((1 - targetMarginFraction) * invOnePlusT) - r;
+  if (!Number.isFinite(denom) || denom <= 0) {
+    return {
+      raw_required_final_price: null,
+      feasible: false,
+      infeasible_reason:
+        "Objetivo no alcanzable: impuesto de referencia, comisiones y margen de contribución consumen la venta neta.",
+      variable_fee_rate: r,
+      denominator: denom,
+    };
+  }
+  const numerator = productionCost + fixedCostPerUnit;
+  if (numerator < 0) {
+    return {
+      raw_required_final_price: null,
+      feasible: false,
+      infeasible_reason: "Costos inválidos.",
+      variable_fee_rate: r,
+      denominator: denom,
+    };
+  }
+  return {
+    raw_required_final_price: numerator / denom,
+    feasible: true,
+    infeasible_reason: null,
+    variable_fee_rate: r,
+    denominator: denom,
+  };
+}
+
+export type RequiredChannelPriceInput = {
+  productionCost: number;
+  catalogFinalPrice: number;
+  taxRatePercent: number;
+  profile: ChannelCostProfileInput;
+  unitsPerOrder?: number | null;
+  targetChannelMarginPercent: number;
+  roundingRule?: PriceRoundingRule;
+};
+
+export type RequiredChannelPriceResult = {
+  production_cost: number;
+  fixed_cost_per_unit: number;
+  variable_fee_rate: number;
+  tax_rate: number;
+  target_channel_margin: number;
+  raw_required_final_price: number | null;
+  rounded_required_final_price: number | null;
+  resulting_net_revenue: number | null;
+  resulting_channel_cost: number | null;
+  resulting_contribution: number | null;
+  resulting_channel_margin: number | null;
+  feasible: boolean;
+  infeasible_reason: string | null;
+  catalog_final_price: number;
+  current_price_gap: number | null;
+  current_price_gap_percent: number | null;
+};
+
+export function calculateRequiredChannelPrice(
+  input: RequiredChannelPriceInput,
+): RequiredChannelPriceResult {
+  if (!Number.isFinite(input.productionCost) || input.productionCost < 0) {
+    throw new Error("Costo de producción inválido.");
+  }
+  validateFeePercent(input.profile.channel_fee_percent, "Comisión de canal");
+  validateFeePercent(input.profile.payment_fee_percent, "Comisión de cobro");
+
+  const units =
+    input.unitsPerOrder != null && Number.isFinite(input.unitsPerOrder)
+      ? input.unitsPerOrder
+      : input.profile.default_units_per_order;
+  validateUnitsPerOrder(units);
+
+  const m = validateTargetChannelMarginPercent(input.targetChannelMarginPercent);
+  const taxFrac = percentToFraction(input.taxRatePercent);
+  const channelRate = input.profile.channel_fee_percent / 100;
+  const paymentRate = input.profile.payment_fee_percent / 100;
+  const fixedUnit = fixedCostPerUnit(input.profile, units);
+
+  const core = rawRequiredFinalPriceForChannelMargin(
+    input.productionCost,
+    fixedUnit,
+    channelRate,
+    paymentRate,
+    taxFrac,
+    m,
+  );
+
+  const catalog = roundCurrency(input.catalogFinalPrice, 2);
+  const base: RequiredChannelPriceResult = {
+    production_cost: input.productionCost,
+    fixed_cost_per_unit: fixedUnit,
+    variable_fee_rate: core.variable_fee_rate,
+    tax_rate: input.taxRatePercent,
+    target_channel_margin: m,
+    raw_required_final_price: core.raw_required_final_price,
+    rounded_required_final_price: null,
+    resulting_net_revenue: null,
+    resulting_channel_cost: null,
+    resulting_contribution: null,
+    resulting_channel_margin: null,
+    feasible: core.feasible,
+    infeasible_reason: core.infeasible_reason,
+    catalog_final_price: catalog,
+    current_price_gap: null,
+    current_price_gap_percent: null,
+  };
+
+  if (!core.feasible || core.raw_required_final_price == null) {
+    return base;
+  }
+
+  const rule = input.roundingRule ?? "none";
+  const rounded = roundSuggestedPrice(core.raw_required_final_price, rule);
+
+  const forward = calculateChannelProfitability({
+    catalogFinalPrice: catalog,
+    finalPriceOverride: rounded,
+    taxRatePercent: input.taxRatePercent,
+    productionCost: input.productionCost,
+    profile: input.profile,
+    unitsPerOrder: units,
+  });
+
+  const gap = roundCurrency(rounded - catalog, 2);
+  const gapPct = catalog > 0 ? gap / catalog : null;
+
+  return {
+    ...base,
+    rounded_required_final_price: rounded,
+    resulting_net_revenue: forward.net_sales_revenue,
+    resulting_channel_cost: forward.channel_cost_per_unit,
+    resulting_contribution: forward.unit_contribution,
+    resulting_channel_margin: forward.channel_margin,
+    current_price_gap: gap,
+    current_price_gap_percent: gapPct,
+  };
+}
 
 export type ChannelProfitabilityInput = {
   catalogFinalPrice: number;
@@ -52,6 +233,7 @@ export type ChannelProfitabilityResult = {
   break_even_viable: boolean;
 };
 
+/** Caso particular: margen de contribución objetivo = 0 (equilibrio). */
 export function breakEvenFinalPrice(
   productionCost: number,
   fixedCostPerUnit: number,
@@ -59,15 +241,18 @@ export function breakEvenFinalPrice(
   paymentFeeRate: number,
   taxRateFraction: number,
 ): { price: number | null; viable: boolean } {
-  const r = channelFeeRate + paymentFeeRate;
-  const invOnePlusT = taxRateFraction > 0 ? 1 / (1 + taxRateFraction) : 1;
-  const denom = invOnePlusT - r;
-  if (!Number.isFinite(denom) || denom <= 0) {
+  const core = rawRequiredFinalPriceForChannelMargin(
+    productionCost,
+    fixedCostPerUnit,
+    channelFeeRate,
+    paymentFeeRate,
+    taxRateFraction,
+    0,
+  );
+  if (!core.feasible || core.raw_required_final_price == null) {
     return { price: null, viable: false };
   }
-  const numerator = productionCost + fixedCostPerUnit;
-  if (numerator < 0) return { price: null, viable: false };
-  return { price: roundCurrency(numerator / denom, 2), viable: true };
+  return { price: roundCurrency(core.raw_required_final_price, 2), viable: true };
 }
 
 export function calculateChannelProfitability(
@@ -123,13 +308,13 @@ export function calculateChannelProfitability(
   const returnOnProductionCost =
     input.productionCost > 0 ? unitContribution / input.productionCost : null;
 
-  const fixedOnlyPerUnit = fixedFeeUnit + shippingUnit + otherUnit;
-  const be = breakEvenFinalPrice(
+  const beCore = rawRequiredFinalPriceForChannelMargin(
     input.productionCost,
-    fixedOnlyPerUnit,
+    fixedFeeUnit + shippingUnit + otherUnit,
     channelRate,
     paymentRate,
     taxRate,
+    0,
   );
 
   return {
@@ -148,7 +333,10 @@ export function calculateChannelProfitability(
     unit_contribution: unitContribution,
     channel_margin: channelMargin,
     return_on_production_cost: returnOnProductionCost,
-    break_even_final_price: be.price,
-    break_even_viable: be.viable,
+    break_even_final_price:
+      beCore.feasible && beCore.raw_required_final_price != null
+        ? roundCurrency(beCore.raw_required_final_price, 2)
+        : null,
+    break_even_viable: beCore.feasible,
   };
 }

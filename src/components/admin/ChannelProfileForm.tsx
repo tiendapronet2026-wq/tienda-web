@@ -14,6 +14,7 @@ export type ChannelProfileRow = {
   shipping_absorbed_per_order: number;
   other_cost_per_order: number;
   default_units_per_order: number;
+  target_channel_margin_percent: number | null;
   is_active: boolean;
 };
 
@@ -120,6 +121,21 @@ function ProfileFields({ profile }: { profile?: ChannelProfileRow }) {
             step="0.0001"
             min="0.0001"
             defaultValue={profile?.default_units_per_order ?? 1}
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
+          />
+        </label>
+        <label className="block text-sm font-medium sm:col-span-2">
+          Margen de contribución objetivo por defecto (%)
+          <span className="ml-1 text-xs font-normal text-muted">
+            (sobre venta neta, después de producción y costos de este perfil — no es margen Gate 3A)
+          </span>
+          <input
+            name="target_channel_margin_percent"
+            type="number"
+            step="0.01"
+            min="0"
+            max="99.99"
+            defaultValue={profile?.target_channel_margin_percent ?? ""}
             className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
           />
         </label>

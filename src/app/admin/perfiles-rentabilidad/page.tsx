@@ -25,6 +25,8 @@ export default async function ChannelProfilesPage() {
     shipping_absorbed_per_order: Number(r.shipping_absorbed_per_order),
     other_cost_per_order: Number(r.other_cost_per_order),
     default_units_per_order: Number(r.default_units_per_order),
+    target_channel_margin_percent:
+      r.target_channel_margin_percent != null ? Number(r.target_channel_margin_percent) : null,
     is_active: r.is_active,
   }));
 

@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState, useTransition } from "react";
-import { simulateChannelProfitability } from "@/app/admin/actions/channel-profiles";
+import {
+  simulateChannelProfitability,
+  simulateChannelTargetPrice,
+} from "@/app/admin/actions/channel-profiles";
 import { formatCost } from "@/lib/utils";
 import type { ChannelProfileRow } from "@/components/admin/ChannelProfileForm";
 
@@ -26,6 +29,19 @@ export type ChannelProfitabilityRpc = {
   return_on_production_cost: number | null;
   break_even_final_price: number | null;
   break_even_viable: boolean;
+};
+
+export type ChannelTargetPriceRpc = {
+  feasible: boolean;
+  infeasible_reason?: string | null;
+  catalog_final_price: number;
+  raw_required_final_price?: number | null;
+  rounded_required_final_price?: number | null;
+  resulting_contribution?: number | null;
+  resulting_channel_margin?: number | null;
+  current_price_gap?: number | null;
+  current_price_gap_percent?: number | null;
+  target_channel_margin_percent?: number;
 };
 
 const section =
@@ -53,8 +69,12 @@ export function ProductChannelProfitabilitySection({
   const [priceOverride, setPriceOverride] = useState("");
   const [unitsOverride, setUnitsOverride] = useState("");
   const [result, setResult] = useState<ChannelProfitabilityRpc | null>(null);
+  const [targetResult, setTargetResult] = useState<ChannelTargetPriceRpc | null>(null);
+  const [targetMargin, setTargetMargin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+
+  const selectedProfile = profiles.find((p) => p.id === profileId);
 
   const runSimulation = () => {
     if (!profileId) return;
@@ -68,12 +88,30 @@ export function ProductChannelProfitabilitySection({
       if (r.error) {
         setError(r.error);
         setResult(null);
+        setTargetResult(null);
         return;
       }
       setError(null);
       setResult(r.data as ChannelProfitabilityRpc);
+
+      const fdTarget = new FormData();
+      fdTarget.set("product_id", productId);
+      fdTarget.set("profile_id", profileId);
+      if (targetMargin.trim()) fdTarget.set("target_channel_margin_percent", targetMargin.trim());
+      if (unitsOverride.trim()) fdTarget.set("units_per_order", unitsOverride.trim());
+      const t = await simulateChannelTargetPrice(fdTarget);
+      if (t.error) {
+        setTargetResult(null);
+      } else {
+        setTargetResult(t.data as ChannelTargetPriceRpc);
+      }
     });
   };
+
+  useEffect(() => {
+    const def = selectedProfile?.target_channel_margin_percent;
+    setTargetMargin(def != null ? String(def) : "40");
+  }, [profileId, selectedProfile?.target_channel_margin_percent]);
 
   useEffect(() => {
     if (profileId) runSimulation();
@@ -214,6 +252,84 @@ export function ProductChannelProfitabilitySection({
           </div>
         </dl>
       )}
+
+      <div className="mt-10 border-t border-border pt-6">
+        <h3 className="text-base font-semibold">Precio objetivo del canal</h3>
+        <p className="mt-1 text-xs text-muted">
+          Simulación — no modifica el precio publicado ni llama a adopción (Gate 3B).
+        </p>
+        <label className="mt-4 block max-w-xs text-sm font-medium">
+          Margen de contribución objetivo (%)
+          <input
+            type="text"
+            inputMode="decimal"
+            value={targetMargin}
+            onChange={(e) => setTargetMargin(e.target.value)}
+            className="mt-1 w-full rounded-xl border border-border px-3 py-2 text-sm"
+          />
+        </label>
+
+        {targetResult && !targetResult.feasible && (
+          <p className="mt-4 rounded-lg bg-error/10 px-4 py-3 text-sm text-error">
+            <strong>Objetivo no alcanzable con esta estructura.</strong>
+            <br />
+            {targetResult.infeasible_reason ??
+              "Revisá comisiones, impuesto de referencia y margen deseado."}
+          </p>
+        )}
+
+        {targetResult?.feasible && (
+          <dl className="mt-4 grid gap-3 text-sm sm:grid-cols-2">
+            <div>
+              <dt className="text-muted">Precio actual (catálogo)</dt>
+              <dd>{formatCost(targetResult.catalog_final_price, currency)}</dd>
+            </div>
+            <div>
+              <dt className="text-muted">Precio necesario (redondeado)</dt>
+              <dd className="font-semibold text-brand">
+                {targetResult.rounded_required_final_price != null
+                  ? formatCost(targetResult.rounded_required_final_price, currency)
+                  : "—"}
+              </dd>
+            </div>
+            {targetResult.raw_required_final_price != null && (
+              <div>
+                <dt className="text-muted">Precio matemático (sin redondeo)</dt>
+                <dd>{formatCost(targetResult.raw_required_final_price, currency)}</dd>
+              </div>
+            )}
+            <div>
+              <dt className="text-muted">Diferencia</dt>
+              <dd>
+                {targetResult.current_price_gap != null
+                  ? `${targetResult.current_price_gap >= 0 ? "+" : ""}${formatCost(
+                      targetResult.current_price_gap,
+                      currency,
+                    )}`
+                  : "—"}
+                {targetResult.current_price_gap_percent != null && (
+                  <span className="text-muted">
+                    {" "}
+                    ({(targetResult.current_price_gap_percent * 100).toFixed(2)} %)
+                  </span>
+                )}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted">Contribución resultante</dt>
+              <dd>
+                {targetResult.resulting_contribution != null
+                  ? formatCost(Number(targetResult.resulting_contribution), currency)
+                  : "—"}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-muted">Margen de contribución resultante</dt>
+              <dd>{pct(targetResult.resulting_channel_margin != null ? Number(targetResult.resulting_channel_margin) : null)}</dd>
+            </div>
+          </dl>
+        )}
+      </div>
     </section>
   );
 }
