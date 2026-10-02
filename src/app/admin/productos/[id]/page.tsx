@@ -109,6 +109,8 @@ export default async function EditProductPage({
     rpcPricing,
     { data: pricingHistory },
     { data: channelProfiles },
+    { data: channelPrices },
+    { data: channelPriceHistory },
   ] = await Promise.all([
     supabase.from("products").select("*").eq("id", id).maybeSingle<Product>(),
     supabase.from("categories").select("id, name").order("name"),
@@ -151,6 +153,18 @@ export default async function EditProductPage({
       .select("*")
       .eq("is_active", true)
       .order("name"),
+    supabase
+      .from("product_channel_prices")
+      .select("channel_cost_profile_id, final_price, is_active")
+      .eq("product_id", id),
+    supabase
+      .from("product_channel_price_history")
+      .select(
+        "id, channel_cost_profile_id, previous_price, adopted_price, suggested_required_price, resulting_channel_margin, reason, created_at, metadata",
+      )
+      .eq("product_id", id)
+      .order("created_at", { ascending: false })
+      .limit(50),
   ]);
 
   if (!product) notFound();
@@ -256,6 +270,28 @@ export default async function EditProductPage({
           currency={bomCurrency}
           profiles={normalizedProfiles}
           initialProfileId={normalizedProfiles[0]?.id ?? null}
+          channelPrices={(channelPrices ?? []).map((row) => ({
+            channel_cost_profile_id: row.channel_cost_profile_id,
+            final_price: Number(row.final_price),
+            is_active: row.is_active,
+          }))}
+          channelHistory={(channelPriceHistory ?? []).map((row) => ({
+            id: row.id,
+            channel_cost_profile_id: row.channel_cost_profile_id,
+            previous_price: Number(row.previous_price),
+            adopted_price: Number(row.adopted_price),
+            suggested_required_price:
+              row.suggested_required_price != null
+                ? Number(row.suggested_required_price)
+                : null,
+            resulting_channel_margin:
+              row.resulting_channel_margin != null
+                ? Number(row.resulting_channel_margin)
+                : null,
+            reason: row.reason,
+            created_at: row.created_at,
+            metadata: row.metadata as { source?: string } | null,
+          }))}
         />
         <ProductPricingSection
           productId={product.id}

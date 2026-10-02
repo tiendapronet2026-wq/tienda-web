@@ -1,6 +1,6 @@
 /**
- * Adapter READ-ONLY para futura integración M&M (Gate 3C).
- * Expone simulación de rentabilidad por perfil; no modifica perfiles ni precios.
+ * Adapter READ-ONLY para futura integración M&M (Gates 3C–3E).
+ * Expone simulación, objetivo y precios adoptados por canal; no escribe en BD.
  */
 import type {
   ChannelProfitabilityResult,
@@ -59,6 +59,44 @@ export function toMmChannelTargetPriceView(
     priceGap: result.current_price_gap,
     feasible: result.feasible,
     infeasibleReason: result.infeasible_reason,
+  };
+}
+
+export type MmChannelAdoptedPriceView = {
+  productId: string;
+  profileId: string;
+  catalogPrice: number;
+  channelPrice: number | null;
+  usesCatalogFallback: boolean;
+  targetRequiredPrice: number | null;
+  targetMarginPercent: number | null;
+  actualChannelMargin: number | null;
+  unitContribution: number | null;
+};
+
+/** Vista consolidada Gate 3E (solo lectura). */
+export function toMmChannelAdoptedPriceView(
+  productId: string,
+  profileId: string,
+  catalogPrice: number,
+  channelOverride: { final_price: number; is_active: boolean } | null | undefined,
+  target: RequiredChannelPriceResult | null,
+  forwardAtChannelPrice: ChannelProfitabilityResult | null,
+): MmChannelAdoptedPriceView {
+  const active =
+    channelOverride?.is_active &&
+    channelOverride.final_price != null &&
+    Number.isFinite(channelOverride.final_price);
+  return {
+    productId,
+    profileId,
+    catalogPrice,
+    channelPrice: active ? channelOverride!.final_price : null,
+    usesCatalogFallback: !active,
+    targetRequiredPrice: target?.rounded_required_final_price ?? null,
+    targetMarginPercent: target != null ? target.target_channel_margin * 100 : null,
+    actualChannelMargin: forwardAtChannelPrice?.channel_margin ?? null,
+    unitContribution: forwardAtChannelPrice?.unit_contribution ?? null,
   };
 }
 
