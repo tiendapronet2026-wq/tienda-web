@@ -4,35 +4,35 @@
 
 **GATE 3F — GREEN / CLOSED** (2026-10-02)
 
-PR [#27](https://github.com/tiendapronet2026-wq/tienda-web/pull/27) mergeado en `master`.
-
-**Requisito deploy:** configurar `INTEGRATION_CREDENTIALS_KEY` (≥32 chars) en Vercel Production/Preview para completar vinculaciones con credenciales cifradas.
+PR [#27](https://github.com/tiendapronet2026-wq/tienda-web/pull/27) + fixes en `master` (`b4ba56b` connect RPC, `67c8334` admin read).
 
 ---
 
-## Preflight
+## ENV / cifrado
 
-### REUTILIZADO
-
-`is_admin()` / RLS; `requireAdmin()`; `createAdminClient()`; patrón secretos servidor (`BRIDGE_API_SECRET`); checkout / Gate 3E sin cambios.
-
-### FALTANTE (entregado)
-
-Modelo integraciones + link sessions + auditoría + cifrado + UI `/admin/integraciones` + `/connect/<token>` + adapter + piloto `link_demo`.
-
-### RIESGOS
-
-Sin `INTEGRATION_CREDENTIALS_KEY`, confirm falla al persistir credenciales. Rate-limit confirm in-memory (suficiente 3F).
-
-### MODELO
-
-Conexión (metadata) · credenciales cifradas (solo service role) · sesión QR (hash SHA-256, 5 min) · eventos audit append-only.
+- `INTEGRATION_CREDENTIALS_KEY` configurada manualmente en Vercel (Production + Preview) — **sin revelar valor**.
+- Confirm producción OK con credencial AES-GCM almacenada (no plaintext en BD).
 
 ---
 
-## Piloto
+## E2E producción (smoke)
 
-`link_demo` — laboratorio interno. WhatsApp / Mercado Pago: **Próximamente** (sin flujo engañoso).
+| Paso | Resultado |
+|------|-----------|
+| `/connect/<token>` válido | OK — pantalla «Vincular a Tienda Pro» |
+| `POST /api/integrations/connect/confirm` | OK `200` — `connectionId` sin secretos en JSON |
+| Anti-replay | OK `400` — «ya fue utilizado» |
+| Sesión `completed` + `used_at` | OK |
+| Cifrado | OK — `ciphertext` no contiene JSON demo en claro |
+| `/admin/integraciones` | OK tras grants + deploy |
+| Revoke / cleanup SQL | Conexiones `link_demo` revocadas post-smoke |
+
+---
+
+## Arquitectura connect
+
+- RPC `resolve_integration_link_session_for_connect` + `finalize` / `store_integration_connection_credential` vía cliente **anon** (hash one-time; no depende de `SUPABASE_SERVICE_ROLE_KEY` alineado).
+- **Limitación conocida:** rate-limit del confirm es **in-memory** (no distribuido en serverless). Deuda antes de integraciones reales de alto riesgo.
 
 ---
 
@@ -40,7 +40,16 @@ Conexión (metadata) · credenciales cifradas (solo service role) · sesión QR 
 
 | Git | Remoto |
 |-----|--------|
-| `20261003010000_tiendapro_integrations_foundation_g3f.sql` | `tiendapro_integrations_foundation_g3f` + `g3f_core` / `g3f_rpc2` / `g3f_rpc3` (apply remoto en pasos) |
+| `20261003010000_tiendapro_integrations_foundation_g3f.sql` | foundation + RPCs |
+| `20261003013000_tiendapro_integrations_pgrst_reload_g3f.sql` | reload schema |
+| `20261003020000_tiendapro_integrations_connect_rpc_g3f.sql` | connect RPC |
+| `20261003021000_tiendapro_integrations_grants_g3f.sql` | grants authenticated |
+
+---
+
+## Piloto
+
+`link_demo` — laboratorio. WhatsApp / Mercado Pago: **Próximamente**.
 
 ---
 

@@ -8,6 +8,8 @@ out/
 # env
 .env
 .env.local
+.gate3f-token
+.gate3f-session
 .env.*.local
 .env*
 
