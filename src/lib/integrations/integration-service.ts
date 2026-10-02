@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { createIntegrationConnectClient } from "@/lib/supabase/integration-connect";
 import { createClient } from "@/lib/supabase/server";
 import {
   decryptCredentialPayload,
@@ -59,59 +60,38 @@ export async function startLinkSession(providerId: IntegrationProviderId) {
 
 export async function resolveLinkSessionForConnect(token: string) {
   const hash = hashLinkToken(token);
-  const admin = createAdminClient();
+  const connect = createIntegrationConnectClient();
+  const { data, error } = await connect.rpc("resolve_integration_link_session_for_connect", {
+    p_token_hash: hash,
+  });
 
-  const { data: row, error } = await admin
-    .from("integration_link_sessions")
-    .select("id, provider, status, expires_at, requested_by, oauth_state")
-    .eq("one_time_token_hash", hash)
-    .maybeSingle();
-
-  if (error || !row) return { valid: false as const, reason: "invalid" };
-
-  if (row.status === "cancelled") return { valid: false as const, reason: "cancelled" };
-  if (row.status === "completed") return { valid: false as const, reason: "used" };
-  if (row.status !== "pending") return { valid: false as const, reason: "invalid" };
-
-  if (new Date(row.expires_at).getTime() <= Date.now()) {
-    await admin
-      .from("integration_link_sessions")
-      .update({ status: "expired", updated_at: new Date().toISOString() })
-      .eq("id", row.id)
-      .eq("status", "pending");
-    await admin.rpc("log_integration_audit_event", {
-      p_event_type: "link_expired",
-      p_provider: row.provider,
-      p_connection_id: null,
-      p_link_session_id: row.id,
-      p_metadata: {},
-    });
-    return { valid: false as const, reason: "expired" };
+  if (error || !data || typeof data !== "object") {
+    return { valid: false as const, reason: "invalid" };
   }
 
-  const { data: profile } = await admin
-    .from("profiles")
-    .select("first_name, last_name")
-    .eq("id", row.requested_by)
-    .maybeSingle();
+  const payload = data as Record<string, unknown>;
+  if (!payload.valid) {
+    const reason = String(payload.reason ?? "invalid");
+    return {
+      valid: false as const,
+      reason: reason as "invalid" | "expired" | "used" | "cancelled",
+    };
+  }
 
-  const requesterLabel = profile
-    ? `${profile.first_name ?? ""} ${profile.last_name ?? ""}`.trim()
-    : "Administrador";
-
-  const provider = getIntegrationProvider(row.provider);
+  const providerId = String(payload.provider ?? "");
+  const provider = getIntegrationProvider(providerId);
   if (!provider?.isImplemented) {
     return { valid: false as const, reason: "invalid" };
   }
 
   return {
     valid: true as const,
-    sessionId: row.id,
-    provider: row.provider as IntegrationProviderId,
+    sessionId: String(payload.session_id),
+    provider: providerId as IntegrationProviderId,
     providerLabel: provider.displayName,
-    expiresAt: row.expires_at,
-    requesterLabel,
-    oauthState: row.oauth_state,
+    expiresAt: String(payload.expires_at),
+    requesterLabel: String(payload.requester_label ?? "Administrador"),
+    oauthState: payload.oauth_state != null ? String(payload.oauth_state) : null,
   };
 }
 
@@ -137,8 +117,8 @@ export async function confirmLinkSession(token: string, oauthState?: string | nu
   const tokenHash = hashLinkToken(token);
   const complete = await provider.completeAuthorization({ tokenHash, oauthState });
 
-  const admin = createAdminClient();
-  const { data: fin, error: finErr } = await admin.rpc("finalize_integration_link_session", {
+  const connect = createIntegrationConnectClient();
+  const { data: fin, error: finErr } = await connect.rpc("finalize_integration_link_session", {
     p_token_hash: tokenHash,
     p_display_name: complete.displayName,
     p_external_account_id: complete.externalAccountId,
@@ -155,11 +135,10 @@ export async function confirmLinkSession(token: string, oauthState?: string | nu
     const { ciphertext, keyVersion } = encryptCredentialPayload(
       JSON.stringify(complete.credentialPayload),
     );
-    const { error: credErr } = await admin.from("integration_connection_credentials").upsert({
-      connection_id: connectionId,
-      ciphertext,
-      key_version: keyVersion,
-      updated_at: new Date().toISOString(),
+    const { error: credErr } = await connect.rpc("store_integration_connection_credential", {
+      p_connection_id: connectionId,
+      p_ciphertext: ciphertext,
+      p_key_version: keyVersion,
     });
     if (credErr) throw new Error(credErr.message);
   }
