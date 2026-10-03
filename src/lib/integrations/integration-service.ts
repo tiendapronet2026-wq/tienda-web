@@ -6,8 +6,12 @@ import {
   encryptCredentialPayload,
 } from "@/lib/integrations/credentials";
 import { generateLinkToken, hashLinkToken } from "@/lib/integrations/link-token";
-import { getIntegrationProvider } from "@/lib/integrations/providers/registry";
-import type { IntegrationProviderId } from "@/lib/integrations/providers/types";
+import { buildMercadoPagoAuthorizationUrl } from "@/lib/integrations/mercadopago/client";
+import { getIntegrationProvider } from "@/lib/integrations/providers/registry-server";
+import type {
+  AuthorizationCompleteResult,
+  IntegrationProviderId,
+} from "@/lib/integrations/providers/types";
 
 export type SafeConnectionRow = {
   id: string;
@@ -47,11 +51,16 @@ export async function startLinkSession(providerId: IntegrationProviderId) {
 
   if (error) throw new Error(error.message);
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error("Sesión inválida.");
+
   const sessionId = String((data as { session_id: string }).session_id);
   await provider.startAuthorization({
     sessionId,
     provider: providerId,
-    requestedByUserId: "",
+    requestedByUserId: user.id,
     tokenHash,
   });
 
@@ -92,31 +101,15 @@ export async function resolveLinkSessionForConnect(token: string) {
     expiresAt: String(payload.expires_at),
     requesterLabel: String(payload.requester_label ?? "Administrador"),
     oauthState: payload.oauth_state != null ? String(payload.oauth_state) : null,
+    oauthCodeChallenge:
+      payload.oauth_code_challenge != null ? String(payload.oauth_code_challenge) : null,
   };
 }
 
-export async function confirmLinkSession(token: string, oauthState?: string | null) {
-  const resolved = await resolveLinkSessionForConnect(token);
-  if (!resolved.valid) {
-    throw new Error(
-      resolved.reason === "expired"
-        ? "El enlace expiró."
-        : resolved.reason === "used"
-          ? "Este enlace ya fue utilizado."
-          : "Enlace inválido.",
-    );
-  }
-
-  if (oauthState && resolved.oauthState && oauthState !== resolved.oauthState) {
-    throw new Error("State inválido.");
-  }
-
-  const provider = getIntegrationProvider(resolved.provider);
-  if (!provider) throw new Error("Proveedor no disponible.");
-
-  const tokenHash = hashLinkToken(token);
-  const complete = await provider.completeAuthorization({ tokenHash, oauthState });
-
+async function persistConnectionFromComplete(
+  tokenHash: string,
+  complete: AuthorizationCompleteResult,
+) {
   const connect = createIntegrationConnectClient();
   const { data: fin, error: finErr } = await connect.rpc("finalize_integration_link_session", {
     p_token_hash: tokenHash,
@@ -143,7 +136,92 @@ export async function confirmLinkSession(token: string, oauthState?: string | nu
     if (credErr) throw new Error(credErr.message);
   }
 
-  return { connectionId, provider: resolved.provider };
+  return connectionId;
+}
+
+export type ConfirmLinkSessionResult =
+  | { kind: "connected"; connectionId: string; provider: IntegrationProviderId }
+  | { kind: "redirect"; authorizationUrl: string; provider: IntegrationProviderId };
+
+export async function confirmLinkSession(token: string, oauthState?: string | null) {
+  const resolved = await resolveLinkSessionForConnect(token);
+  if (!resolved.valid) {
+    throw new Error(
+      resolved.reason === "expired"
+        ? "El enlace expiró."
+        : resolved.reason === "used"
+          ? "Este enlace ya fue utilizado."
+          : "Enlace inválido.",
+    );
+  }
+
+  if (oauthState && resolved.oauthState && oauthState !== resolved.oauthState) {
+    throw new Error("State inválido.");
+  }
+
+  const provider = getIntegrationProvider(resolved.provider);
+  if (!provider) throw new Error("Proveedor no disponible.");
+
+  const tokenHash = hashLinkToken(token);
+
+  if (provider.usesOAuthRedirect) {
+    if (!resolved.oauthState || !resolved.oauthCodeChallenge) {
+      throw new Error("No se pudo completar la vinculación con Mercado Pago.");
+    }
+    const authorizationUrl = buildMercadoPagoAuthorizationUrl({
+      state: resolved.oauthState,
+      codeChallenge: resolved.oauthCodeChallenge,
+    });
+    return {
+      kind: "redirect",
+      authorizationUrl,
+      provider: resolved.provider,
+    };
+  }
+
+  const complete = await provider.completeAuthorization({ tokenHash, oauthState });
+  const connectionId = await persistConnectionFromComplete(tokenHash, complete);
+  return { kind: "connected", connectionId, provider: resolved.provider };
+}
+
+export async function completeMercadoPagoOAuthCallback(oauthState: string, oauthCode: string) {
+  const admin = createAdminClient();
+  const { data, error } = await admin.rpc("resolve_integration_oauth_callback", {
+    p_oauth_state: oauthState,
+    p_provider: "mercadopago",
+  });
+  if (error) throw new Error(error.message);
+
+  const payload = data as Record<string, unknown>;
+  if (!payload?.found) {
+    const reason = String(payload?.reason ?? "invalid");
+    throw new Error(
+      reason === "expired"
+        ? "El enlace expiró."
+        : reason === "used"
+          ? "Esta autorización ya fue utilizada."
+          : "No se pudo completar la vinculación con Mercado Pago.",
+    );
+  }
+
+  const tokenHash = String(payload.token_hash);
+  const sessionId = String(payload.session_id);
+  const pkceCiphertext = String(payload.pkce_ciphertext ?? "");
+
+  const provider = getIntegrationProvider("mercadopago");
+  if (!provider) throw new Error("Proveedor no disponible.");
+
+  const complete = await provider.completeAuthorization({
+    tokenHash,
+    oauthState,
+    oauthCode,
+    pkceVerifierCiphertext: pkceCiphertext,
+  });
+
+  const connectionId = await persistConnectionFromComplete(tokenHash, complete);
+  await admin.rpc("mark_integration_oauth_callback_used", { p_session_id: sessionId });
+
+  return { connectionId, provider: "mercadopago" as IntegrationProviderId };
 }
 
 export async function listSafeConnections(): Promise<SafeConnectionRow[]> {

@@ -15,6 +15,8 @@ export type AuthorizationStartResult = {
 export type AuthorizationCompleteInput = {
   tokenHash: string;
   oauthState?: string | null;
+  oauthCode?: string | null;
+  pkceVerifierCiphertext?: string | null;
 };
 
 export type AuthorizationCompleteResult = {
@@ -38,6 +40,8 @@ export interface IntegrationProvider {
   connectionType: string;
   /** false = tarjeta visible pero sin flujo real (Gate 3G+). */
   isImplemented: boolean;
+  /** Tras confirm en /connect, redirigir a OAuth del proveedor (no finalizar aún). */
+  usesOAuthRedirect?: boolean;
   startAuthorization(ctx: LinkSessionContext): Promise<AuthorizationStartResult>;
   completeAuthorization(input: AuthorizationCompleteInput): Promise<AuthorizationCompleteResult>;
   verifyConnection(connectionId: string): Promise<VerifyConnectionResult>;

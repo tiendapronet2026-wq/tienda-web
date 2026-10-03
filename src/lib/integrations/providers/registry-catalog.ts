@@ -1,0 +1,31 @@
+import type { IntegrationProviderId } from "@/lib/integrations/providers/types";
+
+const catalogCards: {
+  id: IntegrationProviderId;
+  title: string;
+  subtitle: string;
+  isImplemented: boolean;
+}[] = [
+  {
+    id: "whatsapp",
+    title: "WhatsApp / Meta",
+    subtitle: "Mensajería y Embedded Signup",
+    isImplemented: false,
+  },
+  {
+    id: "mercadopago",
+    title: "Mercado Pago",
+    subtitle: "Cobros y OAuth",
+    isImplemented: true,
+  },
+  {
+    id: "link_demo",
+    title: "Laboratorio de vinculación",
+    subtitle: "Prueba el flujo QR sin proveedor externo",
+    isImplemented: true,
+  },
+];
+
+export function listIntegrationCatalog() {
+  return catalogCards;
+}
