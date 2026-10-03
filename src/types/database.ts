@@ -27,6 +27,7 @@ export type Product = {
   track_stock: boolean;
   is_active: boolean;
   is_featured: boolean;
+  fulfillment_type: "physical" | "digital";
   image_url: string | null;
   created_at: string;
   updated_at: string;

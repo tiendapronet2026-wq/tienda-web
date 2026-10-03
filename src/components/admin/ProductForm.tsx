@@ -120,6 +120,16 @@ export function ProductForm({
         <Checkbox label="Activo" name="is_active" defaultChecked={product?.is_active ?? true} />
         <Checkbox label="Destacado" name="is_featured" defaultChecked={product?.is_featured ?? false} />
         <Checkbox label="Controlar stock" name="track_stock" defaultChecked={product?.track_stock ?? true} />
+        <label className="flex items-center gap-2 text-sm">
+          <select
+            name="fulfillment_type"
+            defaultValue={product?.fulfillment_type ?? "physical"}
+            className="rounded-lg border border-border px-2 py-1"
+          >
+            <option value="physical">Físico</option>
+            <option value="digital">Digital (entrega por acceso)</option>
+          </select>
+        </label>
       </div>
 
       {message?.error && <p className="text-sm text-error">{message.error}</p>}
