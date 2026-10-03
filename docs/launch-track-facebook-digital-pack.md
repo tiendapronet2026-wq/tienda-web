@@ -6,7 +6,18 @@
 |------|--------|
 | L1 | Foundation + pack seed (`is_active=false` hasta activación admin) + mis-compras + admin Drive |
 | L2 | Checkout digital + `handleApprovedOrder` (RPC + lock) + smoke admin TEST |
-| L3+ | Messenger / Meta — **no iniciado** |
+| L3 | Webhook Messenger + `RuleBasedResponder` + conversaciones + admin `/admin/ventas-facebook` |
+| L4+ | Meta app real + tokens en Vercel + flag prod — **no iniciado** |
+
+### L3 (técnico cerrado sin Meta real)
+
+- Webhook: `/api/integrations/meta/messenger/webhook` (GET verify + POST firmado).
+- Provider: `MetaMessengerProvider` (`src/lib/sales/meta/`).
+- Bot: `RuleBasedResponder` (sin IA).
+- Precio: `loadPack150Catalog` → `products.price` del pack.
+- Tracking: `?src=facebook_messenger&cid=<tracking_token>` (opaco).
+- Flag: `TIENDAPRO_FACEBOOK_SALES_ENABLED=1` para procesar POST comercialmente.
+- Migración: `20261003140000_tiendapro_facebook_sales_l3.sql` (no aplicada en prod).
 
 ### Auth / conversión Facebook
 

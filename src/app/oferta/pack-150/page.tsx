@@ -2,7 +2,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { createClient } from "@/lib/supabase/server";
+import { createAdminClient } from "@/lib/supabase/admin";
 import { PACK_150_PRODUCT_SLUG } from "@/lib/digital/constants";
+import { touchMessengerAttribution } from "@/lib/sales/attribution";
 import { formatPrice } from "@/lib/utils";
 
 const FAQ = [
@@ -24,7 +26,15 @@ const FAQ = [
   },
 ];
 
-export default async function Pack150OfferPage() {
+export default async function Pack150OfferPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ src?: string; cid?: string }>;
+}) {
+  const sp = await searchParams;
+  const admin = createAdminClient();
+  await touchMessengerAttribution(admin, { src: sp.src ?? null, cid: sp.cid ?? null });
+
   const supabase = await createClient();
   const { data: product } = await supabase
     .from("products")
