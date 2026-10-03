@@ -7,12 +7,20 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth, getCurrentProfile } from "@/lib/auth/session";
 import { getCartItems } from "@/app/actions/cart";
 import { isCheckoutEnabled } from "@/lib/checkout/flags";
+import { reloadCartLinesFromCatalog } from "@/lib/checkout/cart-catalog";
+import { DIGITAL_TEST_ORDER_MARKER } from "@/lib/digital/constants";
 import {
   buildOrderItems,
   computeOrderTotals,
+  cartRequiresShipping,
   decrementStockForOrder,
   type ShippingInput,
 } from "@/lib/checkout/place-order";
+
+function smokeMarkerAllowed(): boolean {
+  if (process.env.TIENDAPRO_DIGITAL_SMOKE_ENABLED === "1") return true;
+  return process.env.NODE_ENV !== "production";
+}
 
 function parseShipping(formData: FormData): ShippingInput {
   const street = String(formData.get("street") ?? "").trim();
@@ -42,17 +50,22 @@ export async function placeOrder(formData: FormData) {
     throw new Error("Sesión de checkout inválida. Recargá la página.");
   }
 
-  const shipping = parseShipping(formData);
-  const items = await getCartItems();
+  const admin = createAdminClient();
+  const rawItems = await getCartItems();
 
-  if (!items.length) {
+  if (!rawItems.length) {
     redirect("/carrito?error=vacio");
   }
 
-  const lines = items.filter((row) => row.products) as Parameters<typeof computeOrderTotals>[0];
-  const { subtotal, shippingCost, total } = computeOrderTotals(lines);
+  const lines = await reloadCartLinesFromCatalog(
+    admin,
+    rawItems.filter((row) => row.products) as Parameters<typeof reloadCartLinesFromCatalog>[1],
+  );
 
-  const admin = createAdminClient();
+  const requiresShipping = cartRequiresShipping(lines);
+  const shipping = requiresShipping ? parseShipping(formData) : null;
+
+  const { subtotal, shippingCost, total } = computeOrderTotals(lines);
   const supabase = await createClient();
 
   const { data: existing } = await admin
@@ -65,16 +78,27 @@ export async function placeOrder(formData: FormData) {
     redirect(`/checkout/confirmacion?pedido=${existing.id}`);
   }
 
-  const shippingAddress = {
-    street: shipping.street,
-    city: shipping.city,
-    state: shipping.state,
-    postal_code: shipping.postalCode,
-    country: shipping.country,
-    recipient: profile
-      ? `${profile.first_name} ${profile.last_name}`.trim()
-      : user.email,
-  };
+  let notes: string | null = shipping?.notes ?? null;
+  if (
+    smokeMarkerAllowed() &&
+    formData.get("digital_test") === "1" &&
+    !cartRequiresShipping(lines)
+  ) {
+    notes = `${DIGITAL_TEST_ORDER_MARKER} ${notes ?? ""}`.trim();
+  }
+
+  const shippingAddress = requiresShipping && shipping
+    ? {
+        street: shipping.street,
+        city: shipping.city,
+        state: shipping.state,
+        postal_code: shipping.postalCode,
+        country: shipping.country,
+        recipient: profile
+          ? `${profile.first_name} ${profile.last_name}`.trim()
+          : user.email,
+      }
+    : null;
 
   const { data: order, error: orderError } = await supabase
     .from("orders")
@@ -86,7 +110,7 @@ export async function placeOrder(formData: FormData) {
       total,
       currency: "ARS",
       shipping_address: shippingAddress,
-      notes: shipping.notes ?? null,
+      notes,
       checkout_idempotency_key: idempotencyKey,
     })
     .select("id")
@@ -124,7 +148,7 @@ export async function placeOrder(formData: FormData) {
     throw e;
   }
 
-  const cartIds = items.map((i) => i.id);
+  const cartIds = rawItems.map((i) => i.id);
   await admin.from("cart_items").delete().in("id", cartIds);
 
   revalidatePath("/carrito");

@@ -11,8 +11,24 @@ export type CartLine = {
     stock: number;
     track_stock: boolean;
     is_active: boolean;
+    fulfillment_type?: string;
   } | null;
 };
+
+export function cartRequiresShipping(lines: CartLine[]): boolean {
+  return lines.some((line) => {
+    const t = line.products?.fulfillment_type ?? "physical";
+    return t !== "digital";
+  });
+}
+
+export function cartFulfillmentMode(lines: CartLine[]): "digital" | "physical" | "mixed" {
+  const types = new Set(
+    lines.map((line) => line.products?.fulfillment_type ?? "physical"),
+  );
+  if (types.size > 1) return "mixed";
+  return types.has("digital") ? "digital" : "physical";
+}
 
 export type ShippingInput = {
   street: string;

@@ -3,6 +3,13 @@ import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { requireAdmin } from "@/lib/auth/session";
 import { formatPrice } from "@/lib/utils";
+import { DigitalSmokeApproveButton } from "@/components/admin/DigitalSmokeApproveButton";
+import { DIGITAL_TEST_ORDER_MARKER } from "@/lib/digital/constants";
+
+function smokeUiEnabled(): boolean {
+  if (process.env.TIENDAPRO_DIGITAL_SMOKE_ENABLED === "1") return true;
+  return process.env.NODE_ENV !== "production";
+}
 
 export default async function AdminPedidoDetailPage({
   params,
@@ -88,6 +95,10 @@ export default async function AdminPedidoDetailPage({
           ))}
         </ul>
       </section>
+
+      {smokeUiEnabled() && order.notes?.includes(DIGITAL_TEST_ORDER_MARKER) && (
+        <DigitalSmokeApproveButton orderId={order.id} />
+      )}
     </div>
   );
 }

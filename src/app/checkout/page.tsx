@@ -6,7 +6,18 @@ import { placeOrder } from "@/app/actions/checkout";
 import { requireAuth } from "@/lib/auth/session";
 import { isCheckoutEnabled } from "@/lib/checkout/flags";
 import { formatPrice } from "@/lib/utils";
-import { computeOrderTotals } from "@/lib/checkout/place-order";
+import { createAdminClient } from "@/lib/supabase/admin";
+import { reloadCartLinesFromCatalog } from "@/lib/checkout/cart-catalog";
+import {
+  cartFulfillmentMode,
+  cartRequiresShipping,
+  computeOrderTotals,
+} from "@/lib/checkout/place-order";
+
+function digitalSmokeEnabled(): boolean {
+  if (process.env.TIENDAPRO_DIGITAL_SMOKE_ENABLED === "1") return true;
+  return process.env.NODE_ENV !== "production";
+}
 
 export default async function CheckoutPage() {
   if (!isCheckoutEnabled()) {
@@ -14,72 +25,106 @@ export default async function CheckoutPage() {
   }
 
   await requireAuth("/login?redirect=/checkout");
-  const items = await getCartItems();
+  const rawItems = await getCartItems();
 
-  if (!items.length) {
+  if (!rawItems.length) {
     redirect("/carrito?error=vacio");
   }
 
-  const lines = items.filter((row) => row.products) as Parameters<typeof computeOrderTotals>[0];
+  const admin = createAdminClient();
+  const lines = await reloadCartLinesFromCatalog(
+    admin,
+    rawItems.filter((row) => row.products) as Parameters<typeof reloadCartLinesFromCatalog>[1],
+  );
+
+  const requiresShipping = cartRequiresShipping(lines);
+  const fulfillmentMode = cartFulfillmentMode(lines);
   const { subtotal, total } = computeOrderTotals(lines);
   const idempotencyKey = randomUUID();
+  const showDigitalTestFlag =
+    digitalSmokeEnabled() && fulfillmentMode === "digital" && !requiresShipping;
 
   return (
     <div className="tp-container py-10 sm:py-12">
       <h1 className="text-3xl font-bold tracking-tight text-foreground">Checkout</h1>
       <p className="mt-2 text-text-secondary">
-        Confirmá envío y datos. El pago online no está activo: el pedido queda registrado como
-        pendiente.
+        {requiresShipping
+          ? "Confirmá envío y datos. El pago online no está activo: el pedido queda registrado como pendiente."
+          : "Confirmá tu pedido digital. No se requiere dirección de envío. El pago online se habilitará en una etapa posterior."}
       </p>
 
       <div className="mt-8 grid gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-        <form action={placeOrder} className="space-y-4 rounded-[var(--radius-xl)] border border-border bg-surface p-6 shadow-[var(--shadow-sm)]">
+        <form
+          action={placeOrder}
+          className="space-y-4 rounded-[var(--radius-xl)] border border-border bg-surface p-6 shadow-[var(--shadow-sm)]"
+        >
           <input type="hidden" name="idempotency_key" value={idempotencyKey} />
-          <h2 className="text-lg font-semibold text-foreground">Envío</h2>
-          <label className="block text-sm">
-            <span className="font-medium text-foreground">Calle y número</span>
-            <input
-              name="street"
-              required
-              className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
-            />
-          </label>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="font-medium text-foreground">Ciudad</span>
-              <input
-                name="city"
-                required
-                className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-foreground">Provincia</span>
-              <input
-                name="state"
-                required
-                className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
-              />
-            </label>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <label className="block text-sm">
-              <span className="font-medium text-foreground">Código postal</span>
-              <input
-                name="postal_code"
-                required
-                className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
-              />
-            </label>
-            <label className="block text-sm">
-              <span className="font-medium text-foreground">País</span>
-              <input
-                name="country"
-                defaultValue="AR"
-                className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
-              />
-            </label>
-          </div>
+          {showDigitalTestFlag && <input type="hidden" name="digital_test" value="1" />}
+
+          {requiresShipping ? (
+            <>
+              <h2 className="text-lg font-semibold text-foreground">Envío</h2>
+              {fulfillmentMode === "mixed" && (
+                <p className="text-sm text-muted">
+                  Tu carrito incluye productos físicos y digitales. Necesitamos una dirección para
+                  los ítems físicos.
+                </p>
+              )}
+              <label className="block text-sm">
+                <span className="font-medium text-foreground">Calle y número</span>
+                <input
+                  name="street"
+                  required
+                  className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
+                />
+              </label>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="font-medium text-foreground">Ciudad</span>
+                  <input
+                    name="city"
+                    required
+                    className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-foreground">Provincia</span>
+                  <input
+                    name="state"
+                    required
+                    className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
+                  />
+                </label>
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <label className="block text-sm">
+                  <span className="font-medium text-foreground">Código postal</span>
+                  <input
+                    name="postal_code"
+                    required
+                    className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
+                  />
+                </label>
+                <label className="block text-sm">
+                  <span className="font-medium text-foreground">País</span>
+                  <input
+                    name="country"
+                    defaultValue="AR"
+                    className="mt-1 w-full rounded-[var(--radius-md)] border border-border px-3 py-2"
+                  />
+                </label>
+              </div>
+            </>
+          ) : (
+            <div className="rounded-xl border border-border bg-surface-muted p-4 text-sm text-text-secondary">
+              <h2 className="font-semibold text-foreground">Entrega digital</h2>
+              <p className="mt-2">
+                El acceso se asociará a tu cuenta ({fulfillmentMode === "digital" ? "solo productos digitales" : ""}
+                ). Revisá <strong>Mis compras</strong> cuando el pago esté aprobado.
+              </p>
+            </div>
+          )}
+
           <label className="block text-sm">
             <span className="font-medium text-foreground">Notas (opcional)</span>
             <textarea
@@ -117,7 +162,10 @@ export default async function CheckoutPage() {
             <span>Total</span>
             <span className="text-brand">{formatPrice(total)}</span>
           </div>
-          <p className="mt-2 text-xs text-muted">Subtotal {formatPrice(subtotal)} · envío a coordinar</p>
+          <p className="mt-2 text-xs text-muted">
+            Subtotal {formatPrice(subtotal)}
+            {requiresShipping ? " · envío a coordinar" : " · sin envío físico"}
+          </p>
           <Link href="/carrito" className="mt-4 inline-block text-sm text-brand hover:underline">
             Volver al carrito
           </Link>

@@ -24,7 +24,8 @@ export default async function ProductDetailPage({
 
   if (!product) notFound();
 
-  const outOfStock = product.track_stock && product.stock <= 0;
+  const outOfStock =
+    product.fulfillment_type !== "digital" && product.track_stock && product.stock <= 0;
 
   let related: typeof product[] = [];
   if (product.category_id) {

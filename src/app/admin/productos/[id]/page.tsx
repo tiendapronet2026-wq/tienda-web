@@ -21,7 +21,9 @@ import {
   type ProcessStepRow,
 } from "@/components/admin/ProductProcessSection";
 import { ProductForm, ProductToggle, StockAdjustForm } from "@/components/admin/ProductForm";
+import { DigitalDeliveryResourceForm } from "@/components/admin/DigitalDeliveryResourceForm";
 import { updateProduct } from "@/app/admin/actions/products";
+import { createAdminClient } from "@/lib/supabase/admin";
 import type { Product } from "@/types/database";
 
 function parseProductPricing(data: unknown): ProductPricingRpc | null {
@@ -169,6 +171,20 @@ export default async function EditProductPage({
 
   if (!product) notFound();
 
+  let digitalResourceId: string | null = null;
+  if (product.fulfillment_type === "digital") {
+    const admin = createAdminClient();
+    const { data: deliveryRow } = await admin
+      .from("digital_delivery_resources")
+      .select("external_resource_id")
+      .eq("product_id", product.id)
+      .eq("active", true)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .maybeSingle<{ external_resource_id: string }>();
+    digitalResourceId = deliveryRow?.external_resource_id ?? null;
+  }
+
   const rpcTotal =
     rpcMaterial.error == null && rpcMaterial.data != null ? Number(rpcMaterial.data) : null;
 
@@ -248,6 +264,12 @@ export default async function EditProductPage({
 
       <div className="mt-8">
         <ProductForm action={updateProduct} categories={categories ?? []} product={product} />
+        {product.fulfillment_type === "digital" && (
+          <DigitalDeliveryResourceForm
+            productId={product.id}
+            defaultResourceId={digitalResourceId}
+          />
+        )}
         {product.track_stock && <StockAdjustForm productId={product.id} />}
         <ProductBomSection
           productId={product.id}
