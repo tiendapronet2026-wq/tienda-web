@@ -21,6 +21,7 @@ const costLinks = [
   { href: "/admin/configuracion/costos", label: "Configuración" },
   { href: "/admin/perfiles-rentabilidad", label: "Perfiles rentabilidad" },
   { href: "/admin/integraciones", label: "Integraciones" },
+  { href: "/admin/ventas-facebook", label: "Ventas Facebook" },
   { href: "/admin/costos/auditoria", label: "Auditoría" },
 ];
 

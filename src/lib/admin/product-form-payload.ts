@@ -12,6 +12,7 @@ export type ProductFormPayload = {
   track_stock: boolean;
   is_active: boolean;
   is_featured: boolean;
+  fulfillment_type: "physical" | "digital";
 };
 
 /** Gate 3B: en edición el precio no viaja al UPDATE (solo adopción auditada). */

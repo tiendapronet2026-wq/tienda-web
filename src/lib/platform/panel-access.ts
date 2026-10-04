@@ -13,6 +13,7 @@ export const STORE_REDIRECT_PREFIXES = [
   "/checkout",
   "/admin",
   "/cotizacion",
+  "/mis-compras",
 ] as const;
 
 export function isStoreRedirectPath(pathname: string): boolean {

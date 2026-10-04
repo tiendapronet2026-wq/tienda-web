@@ -152,6 +152,8 @@ function parseProductForm(
   const trackStock = formData.get("track_stock") === "on";
   const isActive = formData.get("is_active") === "on";
   const isFeatured = formData.get("is_featured") === "on";
+  const fulfillmentType =
+    formData.get("fulfillment_type") === "digital" ? "digital" : "physical";
 
   if (!name) {
     return { error: "El nombre es obligatorio." };
@@ -174,6 +176,7 @@ function parseProductForm(
     track_stock: trackStock,
     is_active: isActive,
     is_featured: isFeatured,
+    fulfillment_type: fulfillmentType,
   };
 
   if (mode === "create") {
