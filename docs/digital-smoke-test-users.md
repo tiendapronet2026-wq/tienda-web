@@ -9,4 +9,6 @@ Cuentas `@example.invalid` en Supabase prod son **solo para gates automatizados*
 
 **Política:** credenciales se invalidan tras smokes que las toquen; el siguiente acceso debe hacerse con **Supabase Dashboard → Authentication → usuario → Send password recovery** (solo si el dominio lo permite) o **registro de un usuario smoke dedicado** vía `/registro` y pedido `[DIGITAL_TEST]` asociado a ese `user_id`.
 
-Smokes E2E de Pack 150 en prod deben preferir un comprador creado en la misma corrida por flujo normal de registro, salvo reutilización explícita con credencial ya gestionada en el equipo.
+Smokes E2E de Pack 150 en prod deben preferir un comprador creado en la misma corrida por flujo normal de registro (`/registro` o Supabase `signUp`), salvo reutilización explícita con credencial ya gestionada en el equipo.
+
+Cuentas creadas solo para smoke Pack 150 (oct-2026) se invalidan al cerrar la corrida; no reutilizar sin nuevo registro.
