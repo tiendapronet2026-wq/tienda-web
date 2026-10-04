@@ -1,11 +1,13 @@
 -- Idempotencia de auditoría: un solo evento entitlements_granted por pedido.
 
-delete from public.digital_fulfillment_events a
-using public.digital_fulfillment_events b
-where a.order_id = b.order_id
-  and a.event_type = 'entitlements_granted'
-  and b.event_type = 'entitlements_granted'
-  and a.created_at > b.created_at;
+delete from public.digital_fulfillment_events e
+where e.event_type = 'entitlements_granted'
+  and e.id not in (
+    select distinct on (order_id) id
+    from public.digital_fulfillment_events
+    where event_type = 'entitlements_granted'
+    order by order_id, created_at asc, id asc
+  );
 
 create unique index if not exists digital_fulfillment_events_entitlements_granted_once_idx
   on public.digital_fulfillment_events (order_id)
