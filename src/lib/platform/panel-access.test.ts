@@ -42,6 +42,7 @@ describe("panel-access / rutas privadas", () => {
     expect(safeRedirectPath("https://x")).toBeNull();
     expect(safeRedirectPath("/control")).toBe("/control");
     expect(safeRedirectPath("/checkout")).toBe("/checkout");
+    expect(safeRedirectPath("/mis-compras")).toBe("/mis-compras");
     expect(safeRedirectPath("/productos/foo")).toBe("/productos/foo");
     expect(safeRedirectPath("/demos")).toBeNull();
   });
@@ -121,7 +122,18 @@ describe("panel-access / post-login", () => {
     expect(sanitizeSignInRedirect("/control", memberOnly, true)).toBe("/acceso-denegado");
     expect(sanitizeSignInRedirect("/app", memberOnly, true)).toBe("/app");
     expect(sanitizeSignInRedirect("/checkout", nobody, true)).toBe("/checkout");
+    expect(sanitizeSignInRedirect("/mis-compras", nobody, true)).toBe("/mis-compras");
     expect(sanitizeSignInRedirect("/control", memberOnly, false)).toBe("/control");
+  });
+
+  it("customer sin panel plataforma vuelve a /mis-compras tras login", () => {
+    expect(
+      resolvePostLoginRedirect({
+        ctx: nobody,
+        redirectParam: "/mis-compras",
+        enforcePlatformAuthorization: true,
+      }),
+    ).toBe("/mis-compras");
   });
 });
 
