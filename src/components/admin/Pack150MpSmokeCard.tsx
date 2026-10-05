@@ -11,11 +11,12 @@ export function Pack150MpSmokeCard({ enabled }: { enabled: boolean }) {
 
   return (
     <section className="mt-10 rounded-[var(--radius-xl)] border border-amber-500/40 bg-amber-500/5 p-5">
-      <h2 className="text-lg font-semibold text-foreground">Smoke privado Pack 150 + Mercado Pago</h2>
+      <h2 className="text-lg font-semibold text-foreground">Smoke monetario MP (ARS 1.000)</h2>
       <p className="mt-2 text-sm text-muted">
-        Solo admin. Requiere <code className="text-xs">TIENDAPRO_DIGITAL_SMOKE_ENABLED=1</code> y{" "}
-        <code className="text-xs">TIENDAPRO_MP_ORDERS_CHECKOUT_ENABLED=1</code> en el entorno. No activa el
-        producto en catálogo público. Precio releído en servidor. Cobro real en Mercado Pago.
+        Solo admin. Producto <code className="text-xs">smoke-mp-pack-150</code> (no el Pack comercial). Requiere{" "}
+        <code className="text-xs">TIENDAPRO_DIGITAL_SMOKE_ENABLED=1</code> y{" "}
+        <code className="text-xs">TIENDAPRO_MP_ORDERS_CHECKOUT_ENABLED=1</code>. Precio releído en servidor (
+        <strong>ARS 1.000</strong>). Entrega alias al mismo Drive del Pack 150. Cobro real en Mercado Pago.
       </p>
       {error && <p className="mt-3 text-sm text-error">{error}</p>}
       <button
@@ -36,7 +37,7 @@ export function Pack150MpSmokeCard({ enabled }: { enabled: boolean }) {
           });
         }}
       >
-        {pending ? "Preparando checkout…" : "Iniciar checkout MP (Pack 150 smoke)"}
+        {pending ? "Preparando checkout…" : "Iniciar checkout MP (smoke ARS 1.000)"}
       </button>
     </section>
   );

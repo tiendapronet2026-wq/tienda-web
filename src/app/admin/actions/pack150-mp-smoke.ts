@@ -37,6 +37,7 @@ export async function adminStartPack150MercadoPagoSmokeCheckout(input?: {
       smoke_disabled: "Smoke digital deshabilitado.",
       mp_checkout_disabled: "Checkout MP Orders deshabilitado.",
       wrong_product: "Producto no permitido para este smoke.",
+      invalid_smoke_price: "Precio smoke no autorizado (debe ser ARS 1.000).",
       price_tamper: "Precio inválido.",
     };
     return { error: messages[result.reason] ?? "Smoke no permitido." };

@@ -38,11 +38,20 @@ Si `POST /v1/orders` responde 403/401 por permisos:
 3. Verificar scope del token incluye `write`.
 4. Reintentar smoke técnico (sin cobro) y luego pago controlado.
 
-## HUMAN GATE — Webhook Secret
+## Gate B — Webhook Order (automatización MCP)
 
-1. URL productiva: `https://www.tiendapro.net/api/webhooks/mercadopago/orders`
-2. Panel → Webhooks → Production → evento **Order (Mercado Pago)** → guardar.
-3. Copiar clave → Vercel `MERCADOPAGO_WEBHOOK_SECRET` → redeploy desde master/PR 3H.
+URL productiva: `https://www.tiendapro.net/api/webhooks/mercadopago/orders` · topic **`orders`**.
+
+Herramienta oficial MCP: **`save_webhook`** (`callback`, `topics`). El token Bearer estático de usuario **no** sirve (`OAuth ownership validation failed`); hace falta MCP conectado por **OAuth** de la app **miTiendaProT** (`2979751689630770`).
+
+Scripts (transporte MCP SSE vía TLS raw + carga de secreto en Vercel sin loguear valor):
+
+- `scripts/gate3h-mp-oauth-save-webhook.mts` — token OAuth desde `integration_connections` (requiere Supabase prod + `INTEGRATION_CREDENTIALS_KEY` reales en el proceso).
+- `scripts/mp-mcp-gate3h-save-webhook.mjs` — variante legacy (solo si MCP OAuth en Cursor está conectado).
+
+Tras éxito: `MERCADOPAGO_WEBHOOK_SECRET` en Vercel Production (verificar solo existencia con `vercel env ls`, nunca el valor).
+
+**Si MCP OAuth en Cursor no conecta:** una sola acción humana — **Cursor → Settings → Tools & MCP → Mercado Pago → Connect** (OAuth), luego reintentar `save_webhook`. Solo si eso falla: panel MP → Webhooks → Production → Order → guardar (sin copiar secretos al chat).
 
 ## Smoke privado Pack 150 (sin activar catálogo)
 
@@ -51,7 +60,7 @@ Reutiliza **`TIENDAPRO_DIGITAL_SMOKE_ENABLED=1`** (patrón L2 existente) + **`TI
 | Mecanismo | Uso |
 |-----------|-----|
 | Checkout carrito + `digital_test` + `adminApproveDigitalTestOrder` | Simula **paid** sin Mercado Pago (legacy L2). |
-| **Admin → Integraciones → “Smoke privado Pack 150 + MP”** | Crea pedido marcado `[DIGITAL_TEST] [PACK150_MP_SMOKE]`, relee slug `pack-150-cursos-digitales-bonos` y precio server-side (aunque `is_active=false`), crea Order MP y redirige a `checkout_url`. |
+| **Admin → Integraciones → “Smoke monetario MP (ARS 1.000)”** | Crea pedido marcado `[DIGITAL_TEST] [SMOKE_MP_MONETARY]`, relee **solo** `smoke-mp-pack-150` y precio **1000.00 ARS** server-side (`is_active=false`). Entrega alias al mismo Drive del Pack comercial. **No** usa `pack-150-cursos-digitales-bonos` (29999). |
 
 **Seguridad:** `requireAdmin`, flags OFF → UI oculta y server action rechaza; no acepta producto/precio del cliente en flujo UI; no altera `is_active` ni visibilidad pública.
 
