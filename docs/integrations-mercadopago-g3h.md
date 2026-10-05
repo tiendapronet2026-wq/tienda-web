@@ -44,6 +44,19 @@ Si `POST /v1/orders` responde 403/401 por permisos:
 2. Panel → Webhooks → Production → evento **Order (Mercado Pago)** → guardar.
 3. Copiar clave → Vercel `MERCADOPAGO_WEBHOOK_SECRET` → redeploy desde master/PR 3H.
 
+## Smoke privado Pack 150 (sin activar catálogo)
+
+Reutiliza **`TIENDAPRO_DIGITAL_SMOKE_ENABLED=1`** (patrón L2 existente) + **`TIENDAPRO_MP_ORDERS_CHECKOUT_ENABLED=1`** en **Preview** (no Production hasta promote acordado).
+
+| Mecanismo | Uso |
+|-----------|-----|
+| Checkout carrito + `digital_test` + `adminApproveDigitalTestOrder` | Simula **paid** sin Mercado Pago (legacy L2). |
+| **Admin → Integraciones → “Smoke privado Pack 150 + MP”** | Crea pedido marcado `[DIGITAL_TEST] [PACK150_MP_SMOKE]`, relee slug `pack-150-cursos-digitales-bonos` y precio server-side (aunque `is_active=false`), crea Order MP y redirige a `checkout_url`. |
+
+**Seguridad:** `requireAdmin`, flags OFF → UI oculta y server action rechaza; no acepta producto/precio del cliente en flujo UI; no altera `is_active` ni visibilidad pública.
+
+**Apagar post-smoke:** poner flags en `0` / quitar env en Preview.
+
 ## Production deploy
 
 Confirmar deploy Git asociado a commit de master/PR 3H (no árbol local con auxiliares).

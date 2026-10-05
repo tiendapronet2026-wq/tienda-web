@@ -1,6 +1,8 @@
 import { requireAdmin } from "@/lib/auth/session";
 import { IntegrationsPanel } from "@/components/admin/IntegrationsPanel";
+import { Pack150MpSmokeCard } from "@/components/admin/Pack150MpSmokeCard";
 import { listSafeConnections } from "@/lib/integrations/connections-read";
+import { isPack150MpSmokeFeatureEnabled } from "@/lib/digital/pack150-mp-smoke-guard";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +28,7 @@ export default async function IntegracionesPage() {
       )}
       <div className="mt-8">
         <IntegrationsPanel connections={connections} />
+        <Pack150MpSmokeCard enabled={isPack150MpSmokeFeatureEnabled()} />
       </div>
     </div>
   );
