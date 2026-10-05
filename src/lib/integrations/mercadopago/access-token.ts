@@ -35,6 +35,9 @@ export async function getMercadoPagoOAuthAccessToken(connectionId: string): Prom
   }
 
   if (cred.refresh_token && tokenNeedsRefresh(cred)) {
+    if (!mercadoPagoProvider.refreshCredentials) {
+      throw new Error("Refresh de Mercado Pago no disponible.");
+    }
     await mercadoPagoProvider.refreshCredentials(connectionId);
     cred = (await readConnectionCredential(connectionId)) as MercadoPagoCredentialPayload | null;
   }
