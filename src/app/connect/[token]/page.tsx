@@ -26,6 +26,7 @@ export default async function ConnectPage({ params }: { params: Promise<{ token:
     <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center p-6">
       <ConnectConfirmForm
         token={token}
+        providerId={resolved.provider}
         providerLabel={resolved.providerLabel}
         requesterLabel={resolved.requesterLabel}
         expiresAt={resolved.expiresAt}
