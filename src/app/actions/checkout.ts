@@ -16,6 +16,7 @@ import {
   decrementStockForOrder,
   type ShippingInput,
 } from "@/lib/checkout/place-order";
+import { shouldUseMercadoPagoOrdersCheckout } from "@/lib/integrations/mercadopago/mp-checkout";
 
 function smokeMarkerAllowed(): boolean {
   if (process.env.TIENDAPRO_DIGITAL_SMOKE_ENABLED === "1") return true;
@@ -153,5 +154,10 @@ export async function placeOrder(formData: FormData) {
 
   revalidatePath("/carrito");
   revalidatePath("/admin/pedidos");
+
+  if (shouldUseMercadoPagoOrdersCheckout(lines)) {
+    redirect(`/checkout/pagar?pedido=${order.id}`);
+  }
+
   redirect(`/checkout/confirmacion?pedido=${order.id}`);
 }
