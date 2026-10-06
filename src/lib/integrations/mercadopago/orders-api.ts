@@ -96,11 +96,7 @@ export async function createMercadoPagoCheckoutOrder(
     throw new Error(message);
   }
 
-  const checkout =
-    pickString(body, "checkout_url") ??
-    (typeof body.config === "object" && body.config
-      ? pickString(body.config as Record<string, unknown>, "checkout_url")
-      : null);
+  const checkout = extractMercadoPagoCheckoutUrl(body);
 
   const id = pickString(body, "id");
   if (!id || !checkout) {
@@ -113,6 +109,23 @@ export async function createMercadoPagoCheckoutOrder(
     status: pickString(body, "status") ?? undefined,
     statusDetail: pickString(body, "status_detail") ?? undefined,
   };
+}
+
+export function extractMercadoPagoCheckoutUrl(body: Record<string, unknown>): string | null {
+  const direct = pickString(body, "checkout_url");
+  if (direct) return direct;
+  if (typeof body.config === "object" && body.config) {
+    const fromConfig = pickString(body.config as Record<string, unknown>, "checkout_url");
+    if (fromConfig) return fromConfig;
+  }
+  const online =
+    typeof body.config === "object" && body.config
+      ? (body.config as Record<string, unknown>).online
+      : null;
+  if (online && typeof online === "object") {
+    return pickString(online as Record<string, unknown>, "checkout_url");
+  }
+  return null;
 }
 
 export async function fetchMercadoPagoOrder(

@@ -21,14 +21,19 @@ export async function adminStartPack150MercadoPagoSmokeCheckout(input?: {
   const { user } = await requireAdmin();
   const profile = await getCurrentProfile();
 
-  const result = await startPack150MercadoPagoSmokeCheckoutForAdmin({
-    isAuthenticated: Boolean(user),
-    isAdmin: profile?.role === "admin" && profile.status === "active",
-    buyerUserId: user.id,
-    buyerEmail: user.email ?? "admin@tiendapro.net",
-    requestedProductSlug: input?.requestedProductSlug,
-    clientPrice: input?.clientPrice,
-  });
+  let result: Awaited<ReturnType<typeof startPack150MercadoPagoSmokeCheckoutForAdmin>>;
+  try {
+    result = await startPack150MercadoPagoSmokeCheckoutForAdmin({
+      isAuthenticated: Boolean(user),
+      isAdmin: profile?.role === "admin" && profile.status === "active",
+      buyerUserId: user.id,
+      buyerEmail: user.email ?? "admin@tiendapro.net",
+      requestedProductSlug: input?.requestedProductSlug,
+      clientPrice: input?.clientPrice,
+    });
+  } catch {
+    return { error: "No se pudo iniciar el checkout smoke (error interno)." };
+  }
 
   if (!result.ok) {
     const messages: Record<string, string> = {
@@ -39,6 +44,11 @@ export async function adminStartPack150MercadoPagoSmokeCheckout(input?: {
       wrong_product: "Producto no permitido para este smoke.",
       invalid_smoke_price: "Precio smoke no autorizado (debe ser ARS 1.000).",
       price_tamper: "Precio inválido.",
+      mp_not_connected:
+        "Mercado Pago no está conectado para checkout server-side. Revisá Integraciones (OAuth connected).",
+      mp_oauth_credentials: "No hay credenciales OAuth válidas de Mercado Pago en el servidor.",
+      mp_checkout_failed: "No se pudo crear la Order de Mercado Pago. Reintentá una sola vez tras el fix.",
+      order_create_failed: "No se pudo crear el pedido smoke interno.",
     };
     return { error: messages[result.reason] ?? "Smoke no permitido." };
   }

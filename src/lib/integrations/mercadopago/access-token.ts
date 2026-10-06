@@ -9,12 +9,22 @@ const REFRESH_SKEW_MS = 60_000;
 export async function getActiveMercadoPagoConnectionId(
   admin: SupabaseClient = createAdminClient(),
 ): Promise<string | null> {
+  const { data: rpcId, error: rpcError } = await admin.rpc("get_active_integration_connection_id", {
+    p_provider: "mercadopago",
+  });
+
+  if (!rpcError && rpcId) {
+    return String(rpcId);
+  }
+
   const { data, error } = await admin
     .from("integration_connections")
     .select("id")
     .eq("provider", "mercadopago")
     .eq("status", "connected")
     .eq("is_active", true)
+    .order("connected_at", { ascending: false })
+    .limit(1)
     .maybeSingle<{ id: string }>();
 
   if (error || !data?.id) return null;

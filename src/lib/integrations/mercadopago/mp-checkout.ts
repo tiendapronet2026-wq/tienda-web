@@ -2,7 +2,10 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getPublicSiteUrl } from "@/lib/integrations/integration-service";
 import { cartFulfillmentMode } from "@/lib/checkout/place-order";
 import { isMercadoPagoOrdersCheckoutEnabled } from "@/lib/integrations/mercadopago/flags";
-import { createMercadoPagoCheckoutOrder } from "@/lib/integrations/mercadopago/orders-api";
+import {
+  createMercadoPagoCheckoutOrder,
+  extractMercadoPagoCheckoutUrl,
+} from "@/lib/integrations/mercadopago/orders-api";
 import {
   getActiveMercadoPagoConnectionId,
   getMercadoPagoOAuthAccessToken,
@@ -51,6 +54,23 @@ export async function ensureMercadoPagoCheckoutForOrder(params: {
 
   const idempotencyKey = order.mp_idempotency_key ?? `tp-order-${order.id}`;
   const accessToken = await getMercadoPagoOAuthAccessToken(connectionId);
+
+  if (order.mp_order_id) {
+    const res = await fetch(
+      `https://api.mercadopago.com/v1/orders/${encodeURIComponent(order.mp_order_id)}`,
+      {
+        headers: {
+          accept: "application/json",
+          authorization: `Bearer ${accessToken}`,
+        },
+      },
+    );
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const checkoutUrl = res.ok ? extractMercadoPagoCheckoutUrl(body) : null;
+    if (checkoutUrl) {
+      return { checkoutUrl, mpOrderId: order.mp_order_id };
+    }
+  }
 
   const created = await createMercadoPagoCheckoutOrder({
     accessToken,
