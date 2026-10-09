@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MetaIncomingTextMessage } from "@/lib/sales/meta/parse-events";
 import type { SalesMessagingProvider } from "@/lib/sales/providers/types";
 import { RuleBasedResponder } from "@/lib/sales/rule-based-responder";
+import { SALES_CHANNEL_TRACKING_SRC } from "@/lib/sales/channels";
 import { loadPack150Catalog } from "@/lib/sales/pack-catalog";
 import {
   findOrCreateConversation,
@@ -37,7 +38,11 @@ export async function handleIncomingMessengerMessages(
     }
 
     try {
-      const conversation = await findOrCreateConversation(admin, msg.externalUserId);
+      const conversation = await findOrCreateConversation(
+        admin,
+        provider.channel,
+        msg.externalUserId,
+      );
 
       const inbound = await recordInboundMessage(
         admin,
@@ -55,7 +60,10 @@ export async function handleIncomingMessengerMessages(
         continue;
       }
 
-      const catalog = await loadPack150Catalog(admin, conversation.tracking_token);
+      const catalog = await loadPack150Catalog(admin, {
+        trackingToken: conversation.tracking_token,
+        trackingSrc: SALES_CHANNEL_TRACKING_SRC[provider.channel],
+      });
       const intent = bot.classifyIntent(msg.text);
       const consecutiveFallbacks =
         intent === "FALLBACK" ? conversation.fallback_count + 1 : conversation.fallback_count;

@@ -1,3 +1,4 @@
+import type { SalesChannel } from "@/lib/sales/channels";
 import type { MetaIncomingTextMessage } from "@/lib/sales/meta/parse-events";
 
 export type WebhookVerifyQuery = {
@@ -12,7 +13,7 @@ export type OutboundTextMessage = {
 };
 
 export interface SalesMessagingProvider {
-  readonly channel: "facebook_messenger";
+  readonly channel: SalesChannel;
 
   verifyWebhook(query: WebhookVerifyQuery): { ok: true; challenge: string } | { ok: false };
 

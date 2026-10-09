@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { PACK_150_OFFER_PATH, PACK_150_PRODUCT_SLUG } from "@/lib/digital/constants";
 import { formatPrice } from "@/lib/utils";
 import { getSiteUrl } from "@/lib/cart/session";
-import { buildMessengerOfferUrl } from "@/lib/sales/tracking";
+import { buildTrackedOfferUrl, MESSENGER_TRACKING_SRC } from "@/lib/sales/tracking";
 
 export type PackCatalogSnapshot = {
   slug: string;
@@ -15,8 +15,10 @@ export type PackCatalogSnapshot = {
 
 export async function loadPack150Catalog(
   admin: SupabaseClient,
-  trackingToken?: string,
+  opts?: { trackingToken?: string; trackingSrc?: string },
 ): Promise<PackCatalogSnapshot> {
+  const trackingToken = opts?.trackingToken;
+  const trackingSrc = opts?.trackingSrc ?? MESSENGER_TRACKING_SRC;
   const { data: product } = await admin
     .from("products")
     .select("name, slug, price, is_active")
@@ -34,7 +36,7 @@ export async function loadPack150Catalog(
     priceFormatted: formatPrice(price),
     isActive,
     offerUrl: isActive
-      ? buildMessengerOfferUrl(`${site}${PACK_150_OFFER_PATH}`, trackingToken)
+      ? buildTrackedOfferUrl(`${site}${PACK_150_OFFER_PATH}`, trackingSrc, trackingToken)
       : null,
   };
 }

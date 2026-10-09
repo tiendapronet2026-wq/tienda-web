@@ -1,10 +1,16 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { notFound } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { PACK_150_PRODUCT_SLUG } from "@/lib/digital/constants";
-import { touchMessengerAttribution } from "@/lib/sales/attribution";
+import { isSalesTrackingSrc } from "@/lib/sales/channels";
+import {
+  SALES_ATTRIBUTION_COOKIE_CID,
+  SALES_ATTRIBUTION_COOKIE_SRC,
+  touchSalesAttribution,
+} from "@/lib/sales/attribution";
 import { formatPrice } from "@/lib/utils";
 
 const FAQ = [
@@ -33,7 +39,21 @@ export default async function Pack150OfferPage({
 }) {
   const sp = await searchParams;
   const admin = createAdminClient();
-  await touchMessengerAttribution(admin, { src: sp.src ?? null, cid: sp.cid ?? null });
+
+  if (isSalesTrackingSrc(sp.src) && sp.cid?.trim()) {
+    const cookieStore = await cookies();
+    const cookieOpts = {
+      httpOnly: true,
+      sameSite: "lax" as const,
+      secure: process.env.NODE_ENV === "production",
+      maxAge: 60 * 60 * 24 * 14,
+      path: "/",
+    };
+    cookieStore.set(SALES_ATTRIBUTION_COOKIE_CID, sp.cid.trim(), cookieOpts);
+    cookieStore.set(SALES_ATTRIBUTION_COOKIE_SRC, sp.src, cookieOpts);
+  }
+
+  await touchSalesAttribution(admin, { src: sp.src ?? null, cid: sp.cid ?? null });
 
   const supabase = await createClient();
   const { data: product } = await supabase

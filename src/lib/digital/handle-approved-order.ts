@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { syncSalesConversationPurchase } from "@/lib/sales/checkout-attribution";
 
 export type HandleApprovedOrderResult =
   | { ok: true; entitlementsCreated: number; entitlementsActivated: number }
@@ -31,6 +32,8 @@ export async function handleApprovedOrder(
   if (!payload?.ok) {
     return { ok: false, reason: payload?.reason ?? "unknown" };
   }
+
+  await syncSalesConversationPurchase(admin, orderId);
 
   return {
     ok: true,
