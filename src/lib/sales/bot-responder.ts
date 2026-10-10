@@ -8,6 +8,7 @@ export type SalesBotIntent =
   | "PAGO"
   | "COMPRAR"
   | "YA_PAGUE"
+  | "COMPROBANTE"
   | "SOPORTE"
   | "HUMANO"
   | "FALLBACK";

@@ -67,13 +67,14 @@ export async function recordInboundMessage(
   conversationId: string,
   providerMessageId: string,
   text: string,
+  messageType: "text" | "image" = "text",
 ): Promise<"new" | "duplicate"> {
   const { error } = await admin.from("sales_messages").insert({
     conversation_id: conversationId,
     provider_message_id: providerMessageId,
     direction: "inbound",
-    message_type: "text",
-    text,
+    message_type: messageType === "image" ? "unknown" : "text",
+    text: messageType === "image" ? `[image] ${text}` : text,
   });
 
   if (error?.code === "23505") {

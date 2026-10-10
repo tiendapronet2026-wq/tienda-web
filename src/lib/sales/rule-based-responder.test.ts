@@ -29,6 +29,10 @@ describe("RuleBasedResponder", () => {
     expect(bot.reply("YA_PAGUE", activeCtx)).toMatch(/Mercado Pago confirme/i);
   });
 
+  it("COMPROBANTE no acredita por captura", () => {
+    expect(bot.reply("COMPROBANTE", activeCtx)).toMatch(/No activamos el acceso solo con una captura/i);
+  });
+
   it("HUMANO crea mensaje de handoff", () => {
     expect(bot.classifyIntent("quiero hablar con una persona")).toBe("HUMANO");
     expect(bot.reply("HUMANO", activeCtx)).toMatch(/persona/i);

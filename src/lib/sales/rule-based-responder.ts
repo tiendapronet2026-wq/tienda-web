@@ -33,7 +33,11 @@ export class RuleBasedResponder implements SalesBotResponder {
   }
 
   reply(intent: SalesBotIntent, ctx: SalesBotResponderContext): string {
-    if (this.shouldOfferHandoff(intent, ctx.consecutiveFallbacks) && intent !== "YA_PAGUE") {
+    if (
+      this.shouldOfferHandoff(intent, ctx.consecutiveFallbacks) &&
+      intent !== "YA_PAGUE" &&
+      intent !== "COMPROBANTE"
+    ) {
       return "Te paso con una persona para que te ayude. Un asesor va a revisar tu consulta.";
     }
 
@@ -57,6 +61,8 @@ export class RuleBasedResponder implements SalesBotResponder {
         return `Genial. Este es el link oficial para comprar: ${ctx.offerUrl}`;
       case "YA_PAGUE":
         return "Cuando Mercado Pago confirme el pago, Tienda Pro habilita automáticamente tu acceso. Revisá Mis compras con la misma cuenta del checkout.";
+      case "COMPROBANTE":
+        return "Recibimos tu comprobante. No activamos el acceso solo con una captura: el pago debe figurar acreditado en Mercado Pago. Si ya pagaste, esperá la confirmación automática o escribinos si pasan más de unos minutos.";
       case "SOPORTE":
       case "HUMANO":
         return "Te paso con una persona para que te ayude.";

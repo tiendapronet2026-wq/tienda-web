@@ -1,7 +1,15 @@
 import type { MetaIncomingTextMessage } from "@/lib/sales/meta/parse-events";
 
+export type WhatsAppInboundKind = "text" | "image" | "other";
+
+export type WhatsAppIncomingMessage = MetaIncomingTextMessage & {
+  kind: WhatsAppInboundKind;
+  /** ID de media en Graph (imágenes / comprobantes). */
+  mediaId?: string;
+};
+
 export type WhatsAppParseResult = {
-  messages: MetaIncomingTextMessage[];
+  messages: WhatsAppIncomingMessage[];
   ignored: number;
 };
 
@@ -9,9 +17,9 @@ function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
 }
 
-/** Parsea mensajes de texto entrantes del webhook WhatsApp Cloud API. */
+/** Parsea mensajes de texto e imágenes entrantes del webhook WhatsApp Cloud API. */
 export function parseWhatsAppCloudWebhookPayload(payload: unknown): WhatsAppParseResult {
-  const messages: MetaIncomingTextMessage[] = [];
+  const messages: WhatsAppIncomingMessage[] = [];
   let ignored = 0;
 
   if (!isRecord(payload) || payload.object !== "whatsapp_business_account") {
@@ -42,22 +50,14 @@ export function parseWhatsAppCloudWebhookPayload(payload: unknown): WhatsAppPars
           ignored += 1;
           continue;
         }
-        if (message.type !== "text") {
-          ignored += 1;
-          continue;
-        }
-        const textBody = isRecord(message.text) ? message.text.body : null;
-        const text = typeof textBody === "string" ? textBody : "";
-        if (!text.trim()) {
-          ignored += 1;
-          continue;
-        }
+
         const externalUserId = typeof message.from === "string" ? message.from : "";
         const providerMessageId = typeof message.id === "string" ? message.id : "";
         if (!externalUserId || !providerMessageId) {
           ignored += 1;
           continue;
         }
+
         const tsRaw = message.timestamp;
         const timestamp =
           typeof tsRaw === "string"
@@ -66,13 +66,46 @@ export function parseWhatsAppCloudWebhookPayload(payload: unknown): WhatsAppPars
               ? tsRaw * 1000
               : Date.now();
 
-        messages.push({
-          externalUserId,
-          providerMessageId,
-          text,
-          timestamp: Number.isFinite(timestamp) ? timestamp : Date.now(),
-          isEcho: false,
-        });
+        const type = typeof message.type === "string" ? message.type : "";
+
+        if (type === "text") {
+          const textBody = isRecord(message.text) ? message.text.body : null;
+          const text = typeof textBody === "string" ? textBody : "";
+          if (!text.trim()) {
+            ignored += 1;
+            continue;
+          }
+          messages.push({
+            externalUserId,
+            providerMessageId,
+            text,
+            timestamp: Number.isFinite(timestamp) ? timestamp : Date.now(),
+            isEcho: false,
+            kind: "text",
+          });
+          continue;
+        }
+
+        if (type === "image") {
+          const image = isRecord(message.image) ? message.image : null;
+          const mediaId = typeof image?.id === "string" ? image.id : undefined;
+          const caption =
+            typeof image?.caption === "string" && image.caption.trim()
+              ? image.caption.trim()
+              : "";
+          messages.push({
+            externalUserId,
+            providerMessageId,
+            text: caption || "[imagen]",
+            timestamp: Number.isFinite(timestamp) ? timestamp : Date.now(),
+            isEcho: false,
+            kind: "image",
+            mediaId,
+          });
+          continue;
+        }
+
+        ignored += 1;
       }
 
       if (!batch.length && (value.statuses || value.errors)) {

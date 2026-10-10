@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { MetaIncomingTextMessage } from "@/lib/sales/meta/parse-events";
+import type { WhatsAppIncomingMessage } from "@/lib/sales/meta/parse-whatsapp-events";
 import type { SalesMessagingProvider } from "@/lib/sales/providers/types";
 import { RuleBasedResponder } from "@/lib/sales/rule-based-responder";
 import { SALES_CHANNEL_TRACKING_SRC } from "@/lib/sales/channels";
@@ -21,7 +22,7 @@ export type MessengerHandlerResult = {
 export async function handleIncomingMessengerMessages(
   admin: SupabaseClient,
   provider: SalesMessagingProvider,
-  messages: MetaIncomingTextMessage[],
+  messages: (MetaIncomingTextMessage | WhatsAppIncomingMessage)[],
   bot = new RuleBasedResponder(),
 ): Promise<MessengerHandlerResult> {
   const result: MessengerHandlerResult = {
@@ -44,11 +45,15 @@ export async function handleIncomingMessengerMessages(
         msg.externalUserId,
       );
 
+      const inboundKind =
+        "kind" in msg && msg.kind === "image" ? ("image" as const) : ("text" as const);
+
       const inbound = await recordInboundMessage(
         admin,
         conversation.id,
         msg.providerMessageId,
         msg.text,
+        inboundKind,
       );
       if (inbound === "duplicate") {
         result.duplicates += 1;
@@ -64,7 +69,10 @@ export async function handleIncomingMessengerMessages(
         trackingToken: conversation.tracking_token,
         trackingSrc: SALES_CHANNEL_TRACKING_SRC[provider.channel],
       });
-      const intent = bot.classifyIntent(msg.text);
+      const intent =
+        inboundKind === "image"
+          ? "COMPROBANTE"
+          : bot.classifyIntent(msg.text);
       const consecutiveFallbacks =
         intent === "FALLBACK" ? conversation.fallback_count + 1 : conversation.fallback_count;
       const handoff = bot.shouldOfferHandoff(intent, consecutiveFallbacks);
