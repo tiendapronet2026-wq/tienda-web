@@ -11,6 +11,7 @@
     "test:e2e:preview": "vercel env run -e preview -- node scripts/run-e2e-preview.mjs"
   },
   "dependencies": {
+    "@fontsource-variable/plus-jakarta-sans": "^5.3.0",
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.8",
     "next": "^15.3.6",
