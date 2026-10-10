@@ -1,5 +1,6 @@
 "use server";
 
+import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -16,6 +17,13 @@ import {
   decrementStockForOrder,
   type ShippingInput,
 } from "@/lib/checkout/place-order";
+import { shouldUseMercadoPagoOrdersCheckout } from "@/lib/integrations/mercadopago/mp-checkout";
+import { isSalesTrackingSrc } from "@/lib/sales/channels";
+import { mergeSalesAttributionIntoNotes } from "@/lib/sales/checkout-attribution";
+import {
+  SALES_ATTRIBUTION_COOKIE_CID,
+  SALES_ATTRIBUTION_COOKIE_SRC,
+} from "@/lib/sales/attribution";
 
 function smokeMarkerAllowed(): boolean {
   if (process.env.TIENDAPRO_DIGITAL_SMOKE_ENABLED === "1") return true;
@@ -79,6 +87,12 @@ export async function placeOrder(formData: FormData) {
   }
 
   let notes: string | null = shipping?.notes ?? null;
+  const cookieStore = await cookies();
+  const salesCid = cookieStore.get(SALES_ATTRIBUTION_COOKIE_CID)?.value;
+  const salesSrc = cookieStore.get(SALES_ATTRIBUTION_COOKIE_SRC)?.value;
+  if (salesCid && isSalesTrackingSrc(salesSrc)) {
+    notes = mergeSalesAttributionIntoNotes(notes, salesSrc, salesCid);
+  }
   if (
     smokeMarkerAllowed() &&
     formData.get("digital_test") === "1" &&
@@ -153,5 +167,10 @@ export async function placeOrder(formData: FormData) {
 
   revalidatePath("/carrito");
   revalidatePath("/admin/pedidos");
+
+  if (shouldUseMercadoPagoOrdersCheckout(lines)) {
+    redirect(`/checkout/pagar?pedido=${order.id}`);
+  }
+
   redirect(`/checkout/confirmacion?pedido=${order.id}`);
 }

@@ -1,12 +1,18 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { MESSENGER_TRACKING_SRC } from "@/lib/sales/tracking";
+import { isSalesTrackingSrc, salesChannelFromTrackingSrc } from "@/lib/sales/channels";
 
-/** Asocia visita a landing con conversación Messenger (cid opaco, sin PSID en URL). */
-export async function touchMessengerAttribution(
+export const SALES_ATTRIBUTION_COOKIE_CID = "tp_sales_cid";
+export const SALES_ATTRIBUTION_COOKIE_SRC = "tp_sales_src";
+
+/** Asocia visita a landing con conversación (cid opaco, sin ID de usuario en URL). */
+export async function touchSalesAttribution(
   admin: SupabaseClient,
   params: { src: string | null; cid: string | null },
 ): Promise<void> {
-  if (params.src !== MESSENGER_TRACKING_SRC || !params.cid?.trim()) return;
+  if (!isSalesTrackingSrc(params.src) || !params.cid?.trim()) return;
+
+  const channel = salesChannelFromTrackingSrc(params.src);
+  if (!channel) return;
 
   await admin
     .from("sales_conversations")
@@ -15,5 +21,13 @@ export async function touchMessengerAttribution(
       state: "interested",
     })
     .eq("tracking_token", params.cid.trim())
-    .eq("channel", "facebook_messenger");
+    .eq("channel", channel);
+}
+
+/** @deprecated Usar touchSalesAttribution */
+export async function touchMessengerAttribution(
+  admin: SupabaseClient,
+  params: { src: string | null; cid: string | null },
+): Promise<void> {
+  return touchSalesAttribution(admin, params);
 }

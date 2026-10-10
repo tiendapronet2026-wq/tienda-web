@@ -1,4 +1,5 @@
 import { getMetaMessengerVerifyToken } from "./config";
+import { getWhatsAppWebhookVerifyToken } from "./whatsapp-config";
 
 export function verifyMetaWebhookSubscription(query: {
   mode: string | null;
@@ -8,8 +9,10 @@ export function verifyMetaWebhookSubscription(query: {
   if (query.mode !== "subscribe" || !query.challenge) {
     return { ok: false };
   }
-  const expected = getMetaMessengerVerifyToken();
-  if (!expected || !query.token || query.token !== expected) {
+  const candidates = [getMetaMessengerVerifyToken(), getWhatsAppWebhookVerifyToken()].filter(
+    (t): t is string => Boolean(t),
+  );
+  if (!candidates.length || !query.token || !candidates.includes(query.token)) {
     return { ok: false };
   }
   return { ok: true, challenge: query.challenge };

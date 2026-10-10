@@ -22,6 +22,7 @@ const costLinks = [
   { href: "/admin/perfiles-rentabilidad", label: "Perfiles rentabilidad" },
   { href: "/admin/integraciones", label: "Integraciones" },
   { href: "/admin/ventas-facebook", label: "Ventas Facebook" },
+  { href: "/admin/ventas-whatsapp", label: "Ventas WhatsApp" },
   { href: "/admin/costos/auditoria", label: "Auditoría" },
 ];
 

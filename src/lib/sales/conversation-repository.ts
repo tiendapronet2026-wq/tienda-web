@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import type { SalesBotIntent } from "@/lib/sales/bot-responder";
-import { MESSENGER_TRACKING_SRC } from "@/lib/sales/tracking";
+import type { SalesChannel } from "@/lib/sales/channels";
+import { SALES_CHANNEL_TRACKING_SRC } from "@/lib/sales/channels";
 
 export type SalesConversationRow = {
   id: string;
@@ -13,19 +14,18 @@ export type SalesConversationRow = {
   last_message_at: string;
 };
 
-const CHANNEL = "facebook_messenger";
-
 export async function findOrCreateConversation(
   admin: SupabaseClient,
+  channel: SalesChannel,
   externalUserId: string,
-  source?: string,
 ): Promise<SalesConversationRow> {
+  const source = SALES_CHANNEL_TRACKING_SRC[channel];
   const { data: existing } = await admin
     .from("sales_conversations")
     .select(
       "id, channel, external_user_id, tracking_token, state, handoff_requested, fallback_count, last_message_at",
     )
-    .eq("channel", CHANNEL)
+    .eq("channel", channel)
     .eq("external_user_id", externalUserId)
     .maybeSingle<SalesConversationRow>();
 
@@ -36,9 +36,9 @@ export async function findOrCreateConversation(
   const { data: created, error } = await admin
     .from("sales_conversations")
     .insert({
-      channel: CHANNEL,
+      channel,
       external_user_id: externalUserId,
-      source: source ?? MESSENGER_TRACKING_SRC,
+      source,
       state: "new",
     })
     .select(
@@ -52,7 +52,7 @@ export async function findOrCreateConversation(
       .select(
         "id, channel, external_user_id, tracking_token, state, handoff_requested, fallback_count, last_message_at",
       )
-      .eq("channel", CHANNEL)
+      .eq("channel", channel)
       .eq("external_user_id", externalUserId)
       .maybeSingle<SalesConversationRow>();
     if (retry) return retry;

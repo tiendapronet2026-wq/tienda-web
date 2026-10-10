@@ -2,8 +2,17 @@
 
 import { useTransition } from "react";
 import { adminCloseFacebookConversation } from "@/app/admin/actions/facebook-sales";
+import { adminCloseWhatsAppConversation } from "@/app/admin/actions/whatsapp-sales";
 
-export function CloseConversationButton({ conversationId }: { conversationId: string }) {
+type CloseConversationButtonProps = {
+  conversationId: string;
+  channel?: "facebook_messenger" | "whatsapp_business";
+};
+
+export function CloseConversationButton({
+  conversationId,
+  channel = "facebook_messenger",
+}: CloseConversationButtonProps) {
   const [pending, startTransition] = useTransition();
 
   return (
@@ -13,7 +22,11 @@ export function CloseConversationButton({ conversationId }: { conversationId: st
       className="text-xs font-semibold text-brand hover:underline disabled:opacity-50"
       onClick={() => {
         startTransition(async () => {
-          await adminCloseFacebookConversation(conversationId);
+          if (channel === "whatsapp_business") {
+            await adminCloseWhatsAppConversation(conversationId);
+          } else {
+            await adminCloseFacebookConversation(conversationId);
+          }
         });
       }}
     >

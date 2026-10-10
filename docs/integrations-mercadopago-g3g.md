@@ -2,7 +2,7 @@
 
 ## Estado
 
-**EN PROGRESO** — implementación en rama `feat/tiendapro-mercadopago-oauth-g3g`. Smoke real y cierre GREEN pendientes de app MP + env Vercel.
+**MERGED (PR #28)** — OAuth conectado en producción. Smoke monetario E2E: Gate 3H (PR #31) + human gates `write` / webhook.
 
 ---
 
