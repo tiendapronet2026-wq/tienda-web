@@ -23,6 +23,7 @@ export function shouldUseMercadoPagoOrdersCheckout(lines: Parameters<typeof cart
 export async function ensureMercadoPagoCheckoutForOrder(params: {
   orderId: string;
   userEmail: string;
+  buyerUserId?: string;
 }): Promise<{ checkoutUrl: string; mpOrderId: string }> {
   const admin = createAdminClient();
   const { data: order, error } = await admin
@@ -40,6 +41,9 @@ export async function ensureMercadoPagoCheckoutForOrder(params: {
     }>();
 
   if (error || !order) throw new Error("Pedido no encontrado.");
+  if (params.buyerUserId && order.user_id !== params.buyerUserId) {
+    throw new Error("Pedido no autorizado.");
+  }
   if (order.status === "paid") throw new Error("Este pedido ya está pagado.");
 
   const { data: items, error: itemsErr } = await admin

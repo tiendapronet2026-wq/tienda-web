@@ -18,6 +18,7 @@ export default async function CheckoutPagarPage({
     const { checkoutUrl } = await ensureMercadoPagoCheckoutForOrder({
       orderId,
       userEmail: user.email ?? "comprador@tiendapro.net",
+      buyerUserId: user.id,
     });
     redirect(checkoutUrl);
   } catch {
