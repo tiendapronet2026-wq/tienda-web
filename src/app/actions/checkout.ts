@@ -3,7 +3,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { createClient } from "@/lib/supabase/server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { requireAuth, getCurrentProfile } from "@/lib/auth/session";
 import { getCartItems } from "@/app/actions/cart";
@@ -24,6 +23,11 @@ import {
   SALES_ATTRIBUTION_COOKIE_CID,
   SALES_ATTRIBUTION_COOKIE_SRC,
 } from "@/lib/sales/attribution";
+import {
+  assertPilotDigital1000CheckoutAllowed,
+  cartContainsPilotDigital1000,
+  mergePilotOrderMarker,
+} from "@/lib/digital/pilot-digital-1000";
 
 function smokeMarkerAllowed(): boolean {
   if (process.env.TIENDAPRO_DIGITAL_SMOKE_ENABLED === "1") return true;
@@ -73,8 +77,8 @@ export async function placeOrder(formData: FormData) {
   const requiresShipping = cartRequiresShipping(lines);
   const shipping = requiresShipping ? parseShipping(formData) : null;
 
+  assertPilotDigital1000CheckoutAllowed(lines);
   const { subtotal, shippingCost, total } = computeOrderTotals(lines);
-  const supabase = await createClient();
 
   const { data: existing } = await admin
     .from("orders")
@@ -100,6 +104,9 @@ export async function placeOrder(formData: FormData) {
   ) {
     notes = `${DIGITAL_TEST_ORDER_MARKER} ${notes ?? ""}`.trim();
   }
+  if (cartContainsPilotDigital1000(lines)) {
+    notes = mergePilotOrderMarker(notes);
+  }
 
   const shippingAddress = requiresShipping && shipping
     ? {
@@ -114,7 +121,7 @@ export async function placeOrder(formData: FormData) {
       }
     : null;
 
-  const { data: order, error: orderError } = await supabase
+  const { data: order, error: orderError } = await admin
     .from("orders")
     .insert({
       user_id: user.id,
@@ -147,7 +154,7 @@ export async function placeOrder(formData: FormData) {
     order_id: order.id,
   }));
 
-  const { error: itemsError } = await supabase.from("order_items").insert(orderItems);
+  const { error: itemsError } = await admin.from("order_items").insert(orderItems);
 
   if (itemsError) {
     await admin.from("orders").delete().eq("id", order.id);

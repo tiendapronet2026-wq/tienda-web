@@ -15,3 +15,10 @@ export type DigitalEntitlementStatus = "pending" | "active" | "revoked";
 
 /** Marca pedidos creados para smoke admin L2 (no producción salvo flag explícito). */
 export const DIGITAL_TEST_ORDER_MARKER = "[DIGITAL_TEST]";
+
+/** Compra piloto web $1.000 — independiente del Pack +150. */
+export const PILOT_DIGITAL_1000_SLUG = "producto-digital-prueba-tienda-pro";
+export const PILOT_DIGITAL_1000_SKU = "TEST-DIGITAL-1000";
+export const PILOT_DIGITAL_1000_PRICE_ARS = 1000;
+export const PILOT_DIGITAL_1000_PATH = "/piloto/digital-1000";
+export const PILOT_DIGITAL_1000_ORDER_MARKER = "[PILOT_DIGITAL_1000]";

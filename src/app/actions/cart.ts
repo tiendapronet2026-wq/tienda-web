@@ -9,6 +9,7 @@ import {
   getOrCreateSessionId,
   MAX_CART_QUANTITY,
 } from "@/lib/cart/session";
+import { isPilotDigital1000Enabled, isPilotDigital1000Sku } from "@/lib/digital/pilot-digital-1000";
 
 async function getCartClientReadOnly() {
   const user = await getCurrentUser();
@@ -37,11 +38,15 @@ async function getCartClientForMutation() {
 async function validateProductForCart(supabase: ReturnType<typeof createAdminClient>, productId: string) {
   const { data: product } = await supabase
     .from("products")
-    .select("id, is_active, stock, track_stock")
+    .select("id, is_active, stock, track_stock, sku")
     .eq("id", productId)
     .maybeSingle();
 
   if (!product || !product.is_active) {
+    throw new Error("Producto no disponible.");
+  }
+
+  if (isPilotDigital1000Sku(product.sku) && !isPilotDigital1000Enabled()) {
     throw new Error("Producto no disponible.");
   }
 

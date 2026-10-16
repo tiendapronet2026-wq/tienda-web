@@ -2,6 +2,7 @@ import Link from "next/link";
 import { ProductCard } from "@/components/ProductCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { createClient } from "@/lib/supabase/server";
+import { PILOT_DIGITAL_1000_SKU } from "@/lib/digital/constants";
 
 export default async function ProductsPage({
   searchParams,
@@ -22,6 +23,7 @@ export default async function ProductsPage({
     .from("products")
     .select("*, categories(*)")
     .eq("is_active", true)
+    .neq("sku", PILOT_DIGITAL_1000_SKU)
     .order("name");
 
   if (categoria) {

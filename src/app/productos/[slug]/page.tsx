@@ -1,11 +1,13 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AddToCartButton } from "@/components/AddToCartButton";
 import { ProductCard } from "@/components/ProductCard";
 import { ProductImage } from "@/components/ProductImage";
 import { Badge } from "@/components/ui/Badge";
 import { createClient } from "@/lib/supabase/server";
 import { formatPrice } from "@/lib/utils";
+import { PILOT_DIGITAL_1000_PATH } from "@/lib/digital/constants";
+import { isPilotDigital1000Enabled, isPilotDigital1000Slug } from "@/lib/digital/pilot-digital-1000";
 
 export default async function ProductDetailPage({
   params,
@@ -13,6 +15,10 @@ export default async function ProductDetailPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+  if (isPilotDigital1000Slug(slug)) {
+    if (!isPilotDigital1000Enabled()) notFound();
+    redirect(PILOT_DIGITAL_1000_PATH);
+  }
   const supabase = await createClient();
 
   const { data: product } = await supabase
